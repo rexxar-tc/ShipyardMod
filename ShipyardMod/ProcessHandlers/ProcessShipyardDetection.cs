@@ -101,7 +101,7 @@ namespace ShipyardMod.ProcessHandlers
                 var gridBlocks = new List<IMySlimBlock>();
                 grid.GetBlocks(gridBlocks);
 
-                foreach (IMySlimBlock slimBlock in gridBlocks.ToArray())
+                foreach (IMySlimBlock slimBlock in gridBlocks)
                 {
                     var collector = slimBlock.FatBlock as IMyCollector;
                     if (collector == null)

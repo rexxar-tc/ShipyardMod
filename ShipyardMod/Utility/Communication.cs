@@ -471,21 +471,15 @@ namespace ShipyardMod.Utility
                 buttons.SetEmissiveParts("Emissive3", blockDef.ButtonColors[3 % blockDef.ButtonColors.Length], 1);
                 buttons.SetEmissiveParts("Emissive4", blockDef.ButtonColors[4 % blockDef.ButtonColors.Length], 1);
             }
-            yardItem.Settings = ShipyardSettings.Instance.GetYardSettings(yardItem.EntityId);
-            ProcessLocalYards.LocalYards.Add(yardItem);
-            var corners = new Vector3D[8];
-            yardItem.ShipyardBox.GetCorners(corners, 0);
-            //check ShipyardItem.UpdatePowerUse for details on this value
-            float maxpower = 5 + (float)Vector3D.DistanceSquared(corners[0], corners[6]) / 8;
-            maxpower += 90;
 
             foreach (IMyCubeBlock tool in yardItem.Tools)
             {
                 var corner = ((IMyCollector)tool).GameLogic.GetAs<ShipyardCorner>();
-                corner.SetMaxPower(maxpower);
                 corner.Shipyard = yardItem;
                 //tool.SetEmissiveParts("Emissive1", Color.Yellow, 0f);
             }
+
+            yardItem.UpdateMaxPowerUse();
         }
 
         private static void HandleShipyardState(byte[] data)
@@ -538,6 +532,8 @@ namespace ShipyardMod.Utility
                     //default:
                     //    throw new ArgumentOutOfRangeException();
                 }
+
+                yard.UpdateMaxPowerUse();
                 
             }
         }
@@ -629,6 +625,7 @@ namespace ShipyardMod.Utility
                     continue;
 
                 yard.Settings = settings;
+                yard.UpdateMaxPowerUse();  // BeamCount and Multiplier affect our maxpower calculation
                 ShipyardSettings.Instance.SetYardSettings(yard.EntityId, settings);
                 found = true;
                 break;
@@ -640,6 +637,7 @@ namespace ShipyardMod.Utility
                     continue;
 
                 yard.Settings = settings;
+                yard.UpdateMaxPowerUse();  // BeamCount and Multiplier affect our maxpower calculation
                 ShipyardSettings.Instance.SetYardSettings(yard.EntityId, settings);
                 
                 foreach (IMyCubeBlock tool in yard.Tools)
