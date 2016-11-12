@@ -8,6 +8,7 @@ using Sandbox.ModAPI;
 using ShipyardMod.ItemClasses;
 using ShipyardMod.Utility;
 using VRage;
+using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -326,12 +327,27 @@ namespace ShipyardMod.ProcessHandlers
                                                      Communication.SendLine(toolLine, shipyardItem.ShipyardBox.Center);
                                                  }
 
-                                                 double efficency;
-
-                                                 if (target.ToolDist[tool.EntityId] < 100) //10^2
-                                                     efficency = 1;
-                                                 else
-                                                     efficency = Math.Max(target.ToolDist[tool.EntityId] / 200000, 1.1); //clamp it or we could *add* components instead of remove them
+                                                 /*
+                                                  * Grinding laser "efficiency" is a float between 0-1 where:
+                                                  *   0.0 =>   0% of components recovered
+                                                  *   1.0 => 100% of components recovered
+                                                  * 
+                                                  * Efficiency decays exponentially as distance to the target (length of the "laser") increases
+                                                  *     0m => 1.0000
+                                                  *    10m => 0.9995
+                                                  *    25m => 0.9969
+                                                  *    50m => 0.9875
+                                                  *   100m => 0.9500
+                                                  *   150m => 0.8875
+                                                  *   250m => 0.6875
+                                                  *   400m => 0.2000
+                                                  *    inf => 0.1000
+                                                  * We impose a minimum efficiency of 0.1 (10%), which happens at distances > ~450m
+                                                  */
+                                                 double efficiency = 1 - (target.ToolDist[tool.EntityId] / 200000);
+                                                 if (efficiency < 0.1)
+                                                     efficiency = 0.1;
+                                                 Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] distance=[{2:F2}m] efficiency=[{3:F5}]", tool.DisplayNameText, b, Math.Sqrt(target.ToolDist[tool.EntityId]), efficiency));
 
                                                  if (!shipyardItem.YardGrids.Contains(target.CubeGrid))
                                                  {
@@ -347,25 +363,23 @@ namespace ShipyardMod.ProcessHandlers
                                                      target.Block.DecreaseMountLevel(grindAmount, grinderInventory);
                                                      decreaseBlock.End();
                                                      Profiler.ProfilingBlock inventoryBlock = Profiler.Start(FullName, nameof(StepGrind), "Grind Inventory");
-                                                     if (efficency > 1)
+                                                     // First move everything into _tmpInventory
+                                                     target.Block.MoveItemsFromConstructionStockpile(_tmpInventory);
+
+                                                     // Then move items into grinder inventory, factoring in our efficiency ratio
+                                                     foreach (MyPhysicalInventoryItem item in _tmpInventory.GetItems())
                                                      {
-                                                         //grinder loses items over distance
-                                                         target.Block.MoveItemsFromConstructionStockpile(_tmpInventory);
-                                                         List<MyPhysicalInventoryItem> items = _tmpInventory.GetItems();
-                                                         foreach (MyPhysicalInventoryItem item in items)
-                                                         {
-                                                             //I hate MyFixedPoint
-                                                             grinderInventory.Add(item, (MyFixedPoint)Math.Floor(Math.Max((double)item.Amount / efficency, 1)));
-                                                         }
-                                                         _tmpInventory.Clear();
+                                                         Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] Item[{2}] grind_amt[{3:F2}] collect_amt[{4:F2}]", tool.DisplayNameText, b, item.Content.SubtypeName, item.Amount, (double)item.Amount*efficiency));
+                                                         grinderInventory.Add(item, item.Amount * (MyFixedPoint)efficiency);
                                                      }
-                                                     else
-                                                     {
-                                                         target.Block.MoveItemsFromConstructionStockpile(grinderInventory);
-                                                     }
+
+                                                     // Then clear out everything left in _tmpInventory
+                                                     _tmpInventory.Clear();
                                                      inventoryBlock.End();
                                                  }
 
+                                                 // This isn't an <else> clause because target.Block may have become FullyDismounted above,
+                                                 // in which case we need to run both code blocks
                                                  if (target.Block.IsFullyDismounted)
                                                  {
                                                      Profiler.ProfilingBlock dismountBlock = Profiler.Start(FullName, nameof(StepGrind), "FullyDismounted");
@@ -388,8 +402,9 @@ namespace ShipyardMod.ProcessHandlers
 
                                                              foreach (MyPhysicalInventoryItem item in tmpItemList)
                                                              {
+                                                                 Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] Item[{2}] inventory[{3:F2}] collected[{4:F2}]", tool.DisplayNameText, b, item.Content.SubtypeName, item.Amount, (double)item.Amount * efficiency));
                                                                  blockInventory.Remove(item, item.Amount);
-                                                                 grinderInventory.Add(item, (MyFixedPoint)Math.Floor((double)item.Amount / efficency));
+                                                                 grinderInventory.Add(item, item.Amount * (MyFixedPoint)efficiency);
                                                              }
                                                          }
                                                          dismountInventory.End();
@@ -638,6 +653,7 @@ namespace ShipyardMod.ProcessHandlers
                                          {
                                              var tool = (IMyCollector)welder;
                                              MyInventory welderInventory = ((MyEntity)tool).GetInventory();
+                                             int i = 0;
                                              foreach (BlockTarget target in shipyardItem.BlocksToProcess[tool.EntityId])
                                              {
                                                  if (target == null)
@@ -648,29 +664,76 @@ namespace ShipyardMod.ProcessHandlers
                                                      targetsToRemove.Add(target);
                                                      continue;
                                                  }
-                                                 var missingComponents = new Dictionary<string, int>();
-                                                 double efficency;
-
-                                                 if (target.ToolDist[tool.EntityId] < 100) //10^2
-                                                     efficency = 1;
-                                                 else
-                                                     efficency = Math.Max(target.ToolDist[tool.EntityId] / 200000, 1.1); //clamp it or we could *add* components instead of remove them
 
                                                  if (!MyAPIGateway.Session.CreativeMode)
                                                  {
+                                                     /*
+                                                      * Welding laser "efficiency" is a float between 0-1 where:
+                                                      *   0.0 =>   0% of component stock used for construction (100% loss)
+                                                      *   1.0 => 100% of component stock used for construction (0% loss)
+                                                      * 
+                                                      * Efficiency decay/distance formula is the same as above for grinder
+                                                      */
+                                                     double efficiency = 1 - (target.ToolDist[tool.EntityId] / 200000);
+                                                     if (efficiency < 0.1)
+                                                         efficiency = 0.1;
+                                                     Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] distance=[{2:F2}m] efficiency=[{3:F5}]", tool.DisplayNameText, i, Math.Sqrt(target.ToolDist[tool.EntityId]), efficiency));
+                                                     /*
+                                                      * We have to factor in our efficiency ratio before transferring to the block "construction stockpile",
+                                                      * but that math isn't nearly as easy as it was with the grinder.
+                                                      * 
+                                                      * For each missing component type, we know how many items are "missing" from the construction model, M
+                                                      * 
+                                                      * The simplest approach would be to pull M items from the conveyor system (if enabled), then move
+                                                      * (M*efficiency) items to the "construction stockpile" and vaporize the other (M*(1-efficiency)) items.
+                                                      * However, this approach would leave the construction stockpile incomplete and require several iterations
+                                                      * before M items have actually been copied.
+                                                      * 
+                                                      * A better solution is to pull enough "extra" items from the conveyors that the welder has enough to
+                                                      * move M items to the construction stockpile even after losses due to distance inefficiency
+                                                      *
+                                                      * For example, if the target block is missing M=9 items and we are running at 0.9 (90%) efficiency,
+                                                      * ideally that means we should pull 10 units, vaporize 1, and still have 9 for construction. However,
+                                                      * if the conveyor system was only able to supply us with 2 components, we should not continue to blindly
+                                                      * vaporize 1 unit.
+                                                      * 
+                                                      * Instead, we have to consult the post-conveyor-pull welder inventory to determine if it has at least
+                                                      * the required number of components.  If it does, we vaporize M*(1-efficiency).  Otherwise we only
+                                                      * vaporize current_count*(1-efficiency) and transfer the rest to the construction stockpile
+                                                      */
+                                                     var missingComponents = new Dictionary<string, int>();
                                                      target.Block.GetMissingComponents(missingComponents);
-                                                     if (tool.UseConveyorSystem)
+
+                                                     var wasteComponents = new Dictionary<string, int>();
+                                                     foreach (KeyValuePair<string, int> entry in missingComponents)
                                                      {
-                                                         welderInventory.PullAny(shipyardItem.ConnectedCargo, missingComponents);
-                                                         var wasteComponents = new Dictionary<string, int>();
-                                                         if (efficency > 1)
+                                                         var componentId = new MyDefinitionId(typeof(MyObjectBuilder_Component), entry.Key);
+                                                         int missing = entry.Value;
+                                                         MyFixedPoint totalRequired = (MyFixedPoint)(missing / efficiency);
+
+                                                         MyFixedPoint currentStock = welderInventory.GetItemAmount(componentId);
+
+                                                         Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] Component[{2}] missing[{3:F3}] inefficiency requires[{4:F3}] in_stock[{5:F3}]", tool.DisplayNameText, i, entry.Key, missing, totalRequired, currentStock));
+                                                         if (currentStock < totalRequired && tool.UseConveyorSystem)
                                                          {
-                                                             foreach (KeyValuePair<string, int> entry in missingComponents)
-                                                                 wasteComponents.Add(entry.Key, (int)(entry.Value * (efficency - 1)));
-                                                             _tmpInventory.PullAny(shipyardItem.ConnectedCargo, wasteComponents);
-                                                             _tmpInventory.Clear();
+                                                             // Welder doesn't have totalRequired, so try to pull the difference from conveyors
+                                                             welderInventory.PullAny(shipyardItem.ConnectedCargo, entry.Key, (int)Math.Ceiling((double)(totalRequired - currentStock)));
+                                                             currentStock = welderInventory.GetItemAmount(componentId);
+                                                             Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] Component[{2}] - after conveyor pull - in_stock[{3:F3}]", tool.DisplayNameText, i, entry.Key, currentStock));
+                                                         }
+
+                                                         // Now compute the number of components to delete
+                                                         // MoveItemsToConstructionPile() below won't move anything if we have less than 1 unit,
+                                                         // so don't bother "losing" anything due to ineffeciency
+                                                         if (currentStock >= 1)
+                                                         {
+                                                             // The lesser of (missing, currentStock), times (1 minus) our efficiency fraction
+                                                             MyFixedPoint toDelete = MyFixedPoint.Min(MyFixedPoint.Floor(currentStock), missing) * (MyFixedPoint)(1 - efficiency);
+                                                             Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] Component[{2}] amount lost due to distance [{3:F3}]", tool.DisplayNameText, i, entry.Key, toDelete));
+                                                             welderInventory.RemoveItemsOfType(toDelete, componentId);
                                                          }
                                                      }
+
                                                      target.Block.MoveItemsToConstructionStockpile(welderInventory);
 
                                                      missingComponents.Clear();
@@ -691,6 +754,7 @@ namespace ShipyardMod.ProcessHandlers
                                                      if (target.Block.IsFullIntegrity && !target.Block.HasDeformation)
                                                          targetsToRemove.Add(target);
                                                  }
+                                                 i++;
                                              }
                                          }
                                      });
