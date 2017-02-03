@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Xml.Serialization;
 using Sandbox.ModAPI;
 
 namespace ShipyardMod.Utility
 {
     public static class Profiler
     {
-#if !STABLE
-        //Stopwatch currently only available in dev branch
+        [Serializable]
         public class Namespace
         {
             public List<Class> Classes;
@@ -27,12 +27,14 @@ namespace ShipyardMod.Utility
             }
         }
 
+        [Serializable]
         public class Class
         {
             public double AvgRuntime;
             public double MaxRuntime;
             public List<Member> Members;
             public string Name;
+            [XmlIgnore]
             public List<double> Runtimes;
 
             public Class()
@@ -47,12 +49,14 @@ namespace ShipyardMod.Utility
             }
         }
 
+        [Serializable]
         public class Member
         {
             public double AvgRuntime;
             public List<Block> Blocks;
             public double MaxRuntime;
             public string Name;
+            [XmlIgnore]
             public List<double> Runtimes;
 
             public Member()
@@ -67,11 +71,13 @@ namespace ShipyardMod.Utility
             }
         }
 
+        [Serializable]
         public class Block
         {
             public double AvgRuntime;
             public double MaxRuntime;
             public string Name;
+            [XmlIgnore]
             public List<double> Runtimes;
 
             public Block()
@@ -85,7 +91,19 @@ namespace ShipyardMod.Utility
             }
         }
 
-        public class ProfilingBlock : IDisposable
+        public static ProfilingBlockBase EmptyBlock = new ProfilingBlockBase();
+
+        public class ProfilingBlockBase : IDisposable
+        {
+            public virtual void End() { }
+
+            public void Dispose()
+            {
+                End();
+            }
+        }
+
+        public class ProfilingBlock : ProfilingBlockBase
         {
             public readonly string Block;
             public readonly string Class;
@@ -103,13 +121,8 @@ namespace ShipyardMod.Utility
                 Block = blockName;
                 Stopwatch = new Stopwatch();
             }
-
-            public void Dispose()
-            {
-                End();
-            }
-
-            public void End()
+            
+            public override void End()
             {
                 if (_stopped)
                     return;
@@ -122,8 +135,11 @@ namespace ShipyardMod.Utility
 
         private static readonly List<Namespace> Namespaces = new List<Namespace>();
 
-        public static ProfilingBlock Start(string className, string memberName = null, string blockName = null)
+        public static ProfilingBlockBase Start(string className, string memberName = null, string blockName = null)
         {
+            if(!ShipyardCore.Debug)
+                return EmptyBlock;
+
             string[] splits = className.Split('.');
 
             var profileblock = new ProfilingBlock(splits[1], splits[2], memberName, blockName);
@@ -219,20 +235,5 @@ namespace ShipyardMod.Utility
                                             _saving = false;
                                         });
         }
-#else
-    //some empty methods so the mod will still work in stable
-        public static ProfilingBlock Start(string className, string memberName = null, string blockName = null)
-        {
-            return new ProfilingBlock();
-        }
-
-        public class ProfilingBlock : IDisposable
-        {
-            public void End() { }
-            public void Dispose() { }
-        }
-
-        public static void Save() { }
-#endif
     }
 }

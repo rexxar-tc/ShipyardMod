@@ -99,6 +99,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\SEServerExtender\GameLibraries\VRage.Math.dll</HintPath>
     </Reference>
+    <Reference Include="VRage.Render, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\SEServerExtender\GameLibraries\VRage.Render.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

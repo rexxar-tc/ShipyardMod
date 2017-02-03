@@ -43,7 +43,7 @@ namespace ShipyardMod.ProcessHandlers
 
             //run through our current list of shipyards and make sure they're still valid
             var itemsToRemove = new HashSet<ShipyardItem>();
-            Profiler.ProfilingBlock firstCheckBlock = Profiler.Start(FullName, nameof(Handle), "First Check");
+            var firstCheckBlock = Profiler.Start(FullName, nameof(Handle), "First Check");
             foreach (ShipyardItem item in ShipyardsList)
             {
                 if (!AreToolsConnected(item.Tools))
@@ -51,6 +51,8 @@ namespace ShipyardMod.ProcessHandlers
                     Logging.Instance.WriteLine("remove item tools " + item.Tools.Length);
                     item.Disable();
                     itemsToRemove.Add(item);
+                    foreach(var tool in item.Tools)
+                        Communication.SendCustomInfo(tool.EntityId, "Invalid Shipyard: All tools must be on the same conveyor network!");
                     continue;
                 }
 
@@ -70,14 +72,24 @@ namespace ShipyardMod.ProcessHandlers
                     continue;
                 }
 
-                Profiler.ProfilingBlock physicsBlock = Profiler.Start(FullName, nameof(Handle), "Physics Check");
-                if (item.YardEntity.Physics == null || !item.YardEntity.Physics.IsStatic || !MyCubeGrid.ShouldBeStatic((MyCubeGrid)item.YardEntity))
+                using (Profiler.Start(FullName, nameof(Handle), "Physics Check"))
                 {
-                    Logging.Instance.WriteLine("remove item physics");
-                    itemsToRemove.Add(item);
-                    item.Disable();
+                    if (item.YardEntity.Physics == null || !item.YardEntity.Physics.IsStatic || !((IMyCubeGrid)item.YardEntity).IsInVoxels())
+                    {
+                        Logging.Instance.WriteLine("remove item physics");
+                        itemsToRemove.Add(item);
+                        item.Disable();
+                        foreach (var tool in item.Tools)
+                            Communication.SendCustomInfo(tool.EntityId, "Invalid Shipyard: Shipyard must be anchored to voxels!");
+                        continue;
+                    }
                 }
-                physicsBlock.End();
+
+                if (item.Tools.Any(t => ((IMyTerminalBlock)t).CustomInfo.Contains("Invalid Shipyard")))
+                {
+                    foreach (var tool in item.Tools)
+                        Communication.SendCustomInfo(tool.EntityId, string.Empty);
+                }
             }
             firstCheckBlock.End();
 
@@ -90,9 +102,10 @@ namespace ShipyardMod.ProcessHandlers
 
             foreach (IMyEntity entity in entities)
             {
+                _corners.Clear();
                 var grid = entity as IMyCubeGrid;
 
-                if (grid?.Physics == null || grid.Closed || grid.MarkedForClose || !grid.IsStatic)
+                if (grid?.Physics == null || grid.Closed || grid.MarkedForClose )
                     continue;
 
                 if (ShipyardsList.Any(x => x.EntityId == entity.EntityId))
@@ -114,12 +127,21 @@ namespace ShipyardMod.ProcessHandlers
                 }
 
                 if (_corners.Count != 8)
+                {
+                    foreach (var tool in _corners)
+                        Communication.SendCustomInfo(tool.EntityId, $"Invalid Shipyard: Must be 8 corner blocks, there are {_corners.Count} on this grid!");
                     continue;
+                }
 
                 using (Profiler.Start(FullName, nameof(Handle), "Static Check"))
                 {
-                    if (!MyCubeGrid.ShouldBeStatic((MyCubeGrid)entity))
+                    if (!grid.IsStatic || !grid.IsInVoxels())
+                    {
+                        Logging.Instance.WriteDebug($"Yard {grid.EntityId} failed: Static check");
+                        foreach (var tool in _corners)
+                            Communication.SendCustomInfo(tool.EntityId, "Invalid Shipyard: Shipyard must be anchored to voxels!");
                         continue;
+                    }
                 }
 
                 if (!IsYardValid(entity, _corners))
@@ -140,8 +162,10 @@ namespace ShipyardMod.ProcessHandlers
 
                 ShipyardsList.Add(item);
                 Communication.SendNewYard(item);
+                foreach (var tool in item.Tools)
+                    Communication.SendCustomInfo(tool.EntityId, "");
             }
-            _corners.Clear();
+           
             Communication.SendYardCount();
         }
 
@@ -267,13 +291,19 @@ namespace ShipyardMod.ProcessHandlers
                     gridPoints.Add(adjustedPoint);
                 }
 
-                if (!AreToolsConnected(tools))
+                if (!MathUtility.ArePointsOrthogonal(gridPoints))
                 {
+                    Logging.Instance.WriteDebug($"Yard {entity.EntityId} failed: APO");
+                    foreach (var tool in tools)
+                        Communication.SendCustomInfo(tool.EntityId, "Invalid Shipyard: Corners not aligned!");
                     return false;
                 }
 
-                if (!MathUtility.ArePointsOrthogonal(gridPoints))
+                if (!AreToolsConnected(tools))
                 {
+                    Logging.Instance.WriteDebug($"Yard {entity.EntityId} failed: ATC");
+                    foreach (var tool in tools)
+                        Communication.SendCustomInfo(tool.EntityId, "Invalid Shipyard: All tools must be on the same conveyor network!");
                     return false;
                 }
 

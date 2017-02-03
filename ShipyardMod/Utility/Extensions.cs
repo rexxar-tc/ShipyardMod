@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Collections;
 using VRage.Game;
@@ -144,6 +146,60 @@ namespace ShipyardMod.Utility
             }
 
             return result;
+        }
+
+        public static bool IsInVoxels(this IMyCubeGrid grid)
+        {
+            if (MyAPIGateway.Session.SessionSettings.StationVoxelSupport)
+                return grid.IsStatic;
+
+            // bool result = false;
+            /*Utilities.InvokeBlocking(() =>
+                                     {
+
+                                         foreach (var block in blocks)
+                                         {
+                                             //TODO: this is horribly, horribly slow. Must revisit the commented code further down
+                                             if (MyCubeGrid.IsInVoxels(((MyCubeGrid)grid).GetCubeBlock(block.Position)))
+                                             {
+                                                 result = true;
+                                                 return;
+                                             }
+                                         }
+                                     });
+            */
+
+            List<IMySlimBlock> blocks = new List<IMySlimBlock>();
+            List<IMyEntity> entities = new List<IMyEntity>();
+            var box = grid.PositionComp.WorldAABB;
+            Utilities.InvokeBlocking(() =>
+                                     {
+                                         entities = MyAPIGateway.Entities.GetTopMostEntitiesInBox(ref box);
+                                         grid.GetBlocks(blocks);
+                                     });
+
+            var voxels = entities.Where(e => e is IMyVoxelBase).ToList();
+
+            if (!voxels.Any())
+                return false;
+
+            foreach (var block in blocks)
+            {
+                BoundingBoxD blockBox;
+                block.GetWorldBoundingBox(out blockBox);
+                var cubeSize = block.CubeGrid.GridSize;
+                BoundingBoxD localAAABB = new BoundingBoxD(cubeSize * ((Vector3D)block.Position - 0.5), cubeSize * ((Vector3D)block.Max + 0.5));
+                var gridWorldMatrix = block.CubeGrid.WorldMatrix;
+                foreach (var map in voxels)
+                {
+                    if (((IMyVoxelBase)map).IsAnyAabbCornerInside(gridWorldMatrix, localAAABB))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }

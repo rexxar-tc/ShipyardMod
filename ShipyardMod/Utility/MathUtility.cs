@@ -29,34 +29,19 @@ namespace ShipyardMod.Utility
             //we should only have two
             if (zVals.Length != 2)
                 return false;
-
-            int zMax;
-            int zMin;
-
-            //pick out the min and max values
-            if (zVals[0] > zVals[1])
-            {
-                zMax = zVals[0];
-                zMin = zVals[1];
-            }
-            else
-            {
-                zMax = zVals[1];
-                zMin = zVals[0];
-            }
-
+            
             //get a list of all points in the two Z planes
-            List<Vector3I> zPlaneMax = points.FindAll(p => p.Z == zMax);
-            List<Vector3I> zPlaneMin = points.FindAll(p => p.Z == zMin);
+            List<Vector3I> zPlane0 = points.FindAll(p => p.Z == zVals[0]);
+            List<Vector3I> zPlane1 = points.FindAll(p => p.Z == zVals[1]);
 
             //we should have four of each
-            if (zPlaneMin.Count != 4 || zPlaneMax.Count != 4)
+            if (zPlane1.Count != 4 || zPlane0.Count != 4)
                 return false;
 
             //make sure each vertex in the maxZ plane has the same X and Y as only one point in the minZ plane
-            foreach (Vector3I zMaxPoint in zPlaneMax)
+            foreach (Vector3I zMaxPoint in zPlane0)
             {
-                if (zPlaneMin.Count(zMinPoint => zMinPoint.X == zMaxPoint.X && zMinPoint.Y == zMaxPoint.Y) != 1)
+                if (zPlane1.Count(zMinPoint => zMinPoint.X == zMaxPoint.X && zMinPoint.Y == zMaxPoint.Y) != 1)
                     return false;
             }
 

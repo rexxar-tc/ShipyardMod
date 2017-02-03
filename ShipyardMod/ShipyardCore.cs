@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using ParallelTasks;
@@ -91,15 +92,11 @@ namespace ShipyardMod
             {
                 Logging.Instance.WriteLine("Debug turned on");
                 Debug = true;
-                sendToOthers = false;
-                return;
             }
-            if (messageLower.Equals("/shipyard debug off"))
+            else if (messageLower.Equals("/shipyard debug off"))
             {
                 Logging.Instance.WriteLine("Debug turned off");
                 Debug = false;
-                sendToOthers = false;
-                return;
             }
 
             _lastMessageTime = DateTime.Now;
@@ -242,7 +239,7 @@ namespace ShipyardMod
                     _initialized = true;
                     Initialize();
                 }
-
+                
                 RunProcessHandlers();
 
                 foreach (ShipyardItem item in ProcessShipyardDetection.ShipyardsList.ToArray())
@@ -276,7 +273,7 @@ namespace ShipyardMod
             if (character == null)
                 return;
 
-            Profiler.ProfilingBlock damageBlock = Profiler.Start("0.ShipyardMod.ShipyardCore", nameof(CheckAndDamagePlayer));
+            var damageBlock = Profiler.Start("0.ShipyardMod.ShipyardCore", nameof(CheckAndDamagePlayer));
             BoundingBoxD charbox = character.WorldAABB;
 
             MyAPIGateway.Parallel.ForEach(Communication.LineDict.Values.ToArray(), lineList =>
@@ -318,13 +315,13 @@ namespace ShipyardMod
                                                     string handlerName = "";
                                                     try
                                                     {
-                                                        Profiler.ProfilingBlock processBlock = Profiler.Start("0.ShipyardMod.ShipyardCore", nameof(RunProcessHandlers));
+                                                        var processBlock = Profiler.Start("0.ShipyardMod.ShipyardCore", nameof(RunProcessHandlers));
                                                         foreach (ProcessHandlerBase handler in _processHandlers)
                                                         {
                                                             if (handler.CanRun())
                                                             {
                                                                 handlerName = handler.GetType().Name;
-                                                                Profiler.ProfilingBlock handlerBlock = Profiler.Start(handler.GetType().FullName);
+                                                                var handlerBlock = Profiler.Start(handler.GetType().FullName);
                                                                 Logging.Instance.WriteDebug(handlerName + " start");
                                                                 handler.Handle();
                                                                 handler.LastUpdate = DateTime.Now;
@@ -469,7 +466,7 @@ namespace ShipyardMod
         }
     }
 
-    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_Collector), "ShipyardCorner_Large")]
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_Collector), false, "ShipyardCorner_Large")]
     public class ShipyardCorner : MyGameLogicComponent
     {
         private static bool _init;
@@ -478,6 +475,7 @@ namespace ShipyardMod
         private IMyCollector _block;
         private float _maxpower;
         private float _power;
+        private string _info = String.Empty;
 
         private MyResourceSinkComponent _sink = new MyResourceSinkComponent();
 
@@ -487,9 +485,10 @@ namespace ShipyardMod
         {
             _block = (IMyCollector)Container.Entity;
             _block.Components.TryGet(out _sink);
-            Entity.NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-            Entity.NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
-            Entity.NeedsUpdate |= MyEntityUpdateEnum.EACH_10TH_FRAME;
+            _block.NeedsUpdate = MyEntityUpdateEnum.NONE;
+            NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+            NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
+            NeedsUpdate |= MyEntityUpdateEnum.EACH_10TH_FRAME;
             _block.OnClosing += OnClosing;
             _block.AppendingCustomInfo += AppendingCustomInfo;
         }
@@ -498,10 +497,12 @@ namespace ShipyardMod
         {
             _block.OnClosing -= OnClosing;
             _block.AppendingCustomInfo -= AppendingCustomInfo;
+            NeedsUpdate = MyEntityUpdateEnum.NONE;
         }
 
         public override void Close()
         {
+            NeedsUpdate = MyEntityUpdateEnum.NONE;
         }
 
         public override void UpdateOnceBeforeFrame()
@@ -666,6 +667,8 @@ namespace ShipyardMod
                 sb.Append("Max required input: ");
                 MyValueFormatter.AppendWorkInBestUnit(maxpower, sb);
                 sb.AppendLine();
+                sb.Append(_info);
+                sb.AppendLine();
 
                 arg2.Append(sb);
             }
@@ -763,7 +766,7 @@ namespace ShipyardMod
 
             if (value == GetWeldSpeed(b))
                 return;
-
+            
             YardSettingsStruct settings = ShipyardSettings.Instance.GetYardSettings(b.CubeGrid.EntityId);
             settings.WeldMultiplier = value;
 
@@ -785,6 +788,11 @@ namespace ShipyardMod
         public void SetMaxPower(float req)
         {
             _maxpower = req;
+        }
+
+        public void SetInfo(string info)
+        {
+            _info = info;
         }
 
         public void UpdateVisuals()

@@ -41,8 +41,10 @@ namespace ShipyardMod.Utility
                                                           {
                                                               try
                                                               {
+                                                                  var invokeBlock = Profiler.Start(FullName, nameof(InvokeBlocking));
                                                                   action();
-                                                              }
+                                                                  invokeBlock.End();
+                                                                }
                                                               catch (Exception ex)
                                                               {
                                                                   Logging.Instance.WriteLine("Exception on blocking game thread invocation: " + ex);
@@ -71,7 +73,7 @@ namespace ShipyardMod.Utility
             if (!SessionClosing)
                 ThreadLocks.Remove(threadLock);
         }
-
+        
         /// <summary>
         ///     Wraps InvokeOnGameThread in lots of try/catch to reduce failure on session close
         /// </summary>
@@ -84,7 +86,9 @@ namespace ShipyardMod.Utility
                                                           {
                                                               try
                                                               {
+                                                                  var invokeBlock = Profiler.Start(FullName, nameof(Invoke));
                                                                   action();
+                                                                  invokeBlock.End();
                                                               }
                                                               catch (Exception ex)
                                                               {
@@ -137,7 +141,7 @@ namespace ShipyardMod.Utility
                                                          {
                                                              try
                                                              {
-                                                                 Profiler.ProfilingBlock queueBlock = Profiler.Start(FullName, nameof(ProcessActionQueue));
+                                                                 var queueBlock = Profiler.Start(FullName, nameof(ProcessActionQueue));
                                                                  while (ActionQueue.Count > 0)
                                                                  {
                                                                      Action action = ActionQueue.Dequeue();
