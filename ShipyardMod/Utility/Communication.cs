@@ -21,11 +21,13 @@ namespace ShipyardMod.Utility
         public static Dictionary<long, List<LineItem>> LineDict = new Dictionary<long, List<LineItem>>();
         public static HashSet<LineItem> FadeList = new HashSet<LineItem>();
         public static List<ScanAnimation> ScanList = new List<ScanAnimation>();
-
+        public static string FullName = typeof(Communication).FullName;
+        
         private static void Recieve(byte[] data)
         {
             try
             {
+                var recieveBlock = Profiler.Start(FullName, nameof(Recieve));
                 var messageId = (MessageTypeEnum)data[0];
                 var newData = new byte[data.Length - 1];
                 Array.Copy(data, 1, newData, 0, newData.Length);
@@ -84,7 +86,12 @@ namespace ShipyardMod.Utility
                     case MessageTypeEnum.ShipyardCount:
                         HandleYardCount(newData);
                         break;
+
+                    case MessageTypeEnum.CustomInfo:
+                        HandleCustomInfo(newData);
+                        break;
                 }
+                recieveBlock.End();
             }
             catch (Exception ex)
             {
@@ -317,14 +324,14 @@ namespace ShipyardMod.Utility
             SendMessageToClients(MessageTypeEnum.ShipyardCount, data);
         }
 
-        public static void SendCustomInfo(long entityId, Vector3D target, string info)
+        public static void SendCustomInfo(long entityId, string info)
         {
             byte[] message = Encoding.UTF8.GetBytes(info);
             var data = new byte[message.Length + sizeof(long)];
             BitConverter.GetBytes(entityId).CopyTo(data, 0);
             Array.Copy(message, 0, data, sizeof(long), message.Length);
 
-            SendMessageToNearby(target, 2000, MessageTypeEnum.CustomInfo, data);
+            SendMessageToClients(MessageTypeEnum.CustomInfo, data);
         }
 
         #endregion
@@ -471,21 +478,15 @@ namespace ShipyardMod.Utility
                 buttons.SetEmissiveParts("Emissive3", blockDef.ButtonColors[3 % blockDef.ButtonColors.Length], 1);
                 buttons.SetEmissiveParts("Emissive4", blockDef.ButtonColors[4 % blockDef.ButtonColors.Length], 1);
             }
-            yardItem.Settings = ShipyardSettings.Instance.GetYardSettings(yardItem.EntityId);
-            ProcessLocalYards.LocalYards.Add(yardItem);
-            var corners = new Vector3D[8];
-            yardItem.ShipyardBox.GetCorners(corners, 0);
-            //check ShipyardItem.UpdatePowerUse for details on this value
-            float maxpower = 5 + (float)Vector3D.DistanceSquared(corners[0], corners[6]) / 8;
-            maxpower += 90;
 
             foreach (IMyCubeBlock tool in yardItem.Tools)
             {
                 var corner = ((IMyCollector)tool).GameLogic.GetAs<ShipyardCorner>();
-                corner.SetMaxPower(maxpower);
                 corner.Shipyard = yardItem;
                 //tool.SetEmissiveParts("Emissive1", Color.Yellow, 0f);
             }
+
+            yardItem.UpdateMaxPowerUse();
         }
 
         private static void HandleShipyardState(byte[] data)
@@ -538,6 +539,8 @@ namespace ShipyardMod.Utility
                     //default:
                     //    throw new ArgumentOutOfRangeException();
                 }
+
+                yard.UpdateMaxPowerUse();
                 
             }
         }
@@ -550,6 +553,19 @@ namespace ShipyardMod.Utility
                 return;
 
             Logging.Instance.WriteLine("Received chat: " + command);
+            if (MyAPIGateway.Session.IsUserAdmin(remoteSteamId))
+            {
+                if (command.Equals("/shipyard debug on"))
+                {
+                    Logging.Instance.WriteLine("Debug turned on");
+                    ShipyardCore.Debug = true;
+                }
+                else if (command.Equals("/shipyard debug off"))
+                {
+                    Logging.Instance.WriteLine("Debug turned off");
+                    ShipyardCore.Debug = false;
+                }
+            }
             /*
             foreach (ChatHandlerBase handler in ChatHandlers)
             {
@@ -629,6 +645,7 @@ namespace ShipyardMod.Utility
                     continue;
 
                 yard.Settings = settings;
+                yard.UpdateMaxPowerUse();  // BeamCount and Multiplier affect our maxpower calculation
                 ShipyardSettings.Instance.SetYardSettings(yard.EntityId, settings);
                 found = true;
                 break;
@@ -640,6 +657,7 @@ namespace ShipyardMod.Utility
                     continue;
 
                 yard.Settings = settings;
+                yard.UpdateMaxPowerUse();  // BeamCount and Multiplier affect our maxpower calculation
                 ShipyardSettings.Instance.SetYardSettings(yard.EntityId, settings);
                 
                 foreach (IMyCubeBlock tool in yard.Tools)
@@ -725,15 +743,16 @@ namespace ShipyardMod.Utility
         {
             long entityId = BitConverter.ToInt64(data, 0);
             string info = Encoding.UTF8.GetString(data, sizeof(long), data.Length - sizeof(long));
+            IMyEntity outEntity;
+            if (!MyAPIGateway.Entities.TryGetEntityById(entityId, out outEntity))
+                return;
 
-            foreach (ShipyardItem yard in ProcessLocalYards.LocalYards)
-            {
-                if (yard.EntityId != entityId)
-                    continue;
+            IMyCollector col = outEntity as IMyCollector;
 
-                //foreach ( var tool in yard.Tools )
-                //    ((IMyTerminalBlock)tool).info
-            }
+            if (col == null)
+                return;
+
+            col.GameLogic.GetAs<ShipyardCorner>()?.SetInfo(info);
         }
 
         #endregion

@@ -214,7 +214,7 @@ namespace ShipyardMod.ProcessHandlers
                                                       {
                                                           try
                                                           {
-                                                              Profiler.ProfilingBlock statBlock = Profiler.Start(FullName, nameof(FormatGrindStats));
+                                                              var statBlock = Profiler.Start(FullName, nameof(FormatGrindStats));
                                                               stats.TotalComponents = new Dictionary<string, int>();
                                                               var blockList = new List<IMySlimBlock>();
                                                               var processGrids = new HashSet<IMyCubeGrid>();
@@ -309,7 +309,7 @@ namespace ShipyardMod.ProcessHandlers
                                                       {
                                                           try
                                                           {
-                                                              Profiler.ProfilingBlock statBlock = Profiler.Start(FullName, nameof(FormatWeldStats));
+                                                              var statBlock = Profiler.Start(FullName, nameof(FormatWeldStats));
                                                               stats.TotalComponents = new Dictionary<string, int>();
                                                               var blockList = new List<IMySlimBlock>();
                                                               var processGrids = new HashSet<IMyCubeGrid>();

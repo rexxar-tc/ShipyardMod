@@ -41,7 +41,8 @@ namespace ShipyardMod.ProcessHandlers
                 //see if the shipyard has been deleted
                 if (item.YardEntity.Closed || item.YardEntity.Physics == null || !item.YardEntity.Physics.IsStatic || item.YardType == ShipyardType.Invalid)
                 {
-                    item.Disable();
+                    //the client shouldn't tell the server the yard is invalid
+                    //item.Disable();
                     removeYards.Add(item);
                     continue;
                 }
@@ -59,15 +60,7 @@ namespace ShipyardMod.ProcessHandlers
                 var sphere = new BoundingSphereD(item.ShipyardBox.Center, dist);
 
                 //Utilities.InvokeBlocking(()=> entities = MyAPIGateway.Entities.GetTopMostEntitiesInSphere(ref sphere));
-#if !STABLE
                 entities = MyAPIGateway.Entities.GetTopMostEntitiesInSphere(ref sphere);
-#else
-                var allEntities = new HashSet<IMyEntity>();
-                MyAPIGateway.Entities.GetEntities(allEntities);
-                foreach(var entity in allEntities)
-                    if(sphere.Contains(entity.WorldVolume) != ContainmentType.Disjoint)
-                        entities.Add(entity);
-#endif
 
                 if (entities.Count == 0)
                 {
@@ -162,7 +155,7 @@ namespace ShipyardMod.ProcessHandlers
         /// <param name="item"></param>
         private void UpdateBoxLines(ShipyardItem item)
         {
-            Profiler.ProfilingBlock lineBlock = Profiler.Start(FullName, nameof(UpdateBoxLines));
+            var lineBlock = Profiler.Start(FullName, nameof(UpdateBoxLines));
             var corners = new Vector3D[8];
             item.ShipyardBox.GetCorners(corners, 0);
             var grid = (IMyCubeGrid)item.YardEntity;

@@ -39,7 +39,7 @@ namespace ShipyardMod.ProcessHandlers
             foreach (ShipyardItem item in ProcessShipyardDetection.ShipyardsList)
             {
                 item.ProcessDisable();
-                Profiler.ProfilingBlock startBlock = Profiler.Start(FullName, nameof(Handle), "Target Detection");
+                var startBlock = Profiler.Start(FullName, nameof(Handle), "Target Detection");
                 //see if the shipyard has been deleted
                 //just disable the yard and skip it, the ShipyardHandler will take care of deleting the item
                 if (item.YardEntity.Closed || item.YardEntity.MarkedForClose)
@@ -166,13 +166,13 @@ namespace ShipyardMod.ProcessHandlers
                 startBlock.End();
                 if (item.YardType == ShipyardType.Grind)
                 {
-                    Profiler.ProfilingBlock grindBlock = Profiler.Start(FullName, "StepGrind");
+                    var grindBlock = Profiler.Start(FullName, "StepGrind");
                     StepGrind(item);
                     grindBlock.End();
                 }
                 else if (item.YardType == ShipyardType.Weld)
                 {
-                    Profiler.ProfilingBlock weldBlock = Profiler.Start(FullName, "StepWeld");
+                    var weldBlock = Profiler.Start(FullName, "StepWeld");
                     if (!StepWeld(item))
                         item.Disable();
                     weldBlock.End();
@@ -190,7 +190,7 @@ namespace ShipyardMod.ProcessHandlers
             float grindAmount = MyAPIGateway.Session.GrinderSpeedMultiplier * shipyardItem.Settings.GrindMultiplier;
             if (shipyardItem.TargetBlocks.Count == 0)
             {
-                Profiler.ProfilingBlock targetblock = Profiler.Start(FullName, nameof(StepGrind), "Populate target blocks");
+                var targetblock = Profiler.Start(FullName, nameof(StepGrind), "Populate target blocks");
                 var blocks = new List<IMySlimBlock>();
                 Logging.Instance.WriteLine(shipyardItem.YardGrids.Count.ToString());
                 foreach (IMyCubeGrid yardGrid in shipyardItem.YardGrids.Where(g => g.Physics != null)) //don't process projections
@@ -214,7 +214,7 @@ namespace ShipyardMod.ProcessHandlers
                 //sort blocks by distance to each tool
                 foreach (IMyCubeBlock tool in shipyardItem.Tools)
                 {
-                    Profiler.ProfilingBlock targetSortBlock = Profiler.Start(FullName, nameof(StepGrind), "Sort Targets");
+                    var targetSortBlock = Profiler.Start(FullName, nameof(StepGrind), "Sort Targets");
                     List<BlockTarget> sortTargets = allBlocks.ToList();
                     sortTargets.Sort((a, b) => a.ToolDist[tool.EntityId].CompareTo(b.ToolDist[tool.EntityId]));
                     shipyardItem.ProxDict[tool.EntityId] = sortTargets;
@@ -222,7 +222,7 @@ namespace ShipyardMod.ProcessHandlers
                 }
             }
 
-            Profiler.ProfilingBlock targetFindBlock = Profiler.Start(FullName, nameof(StepGrind), "Find Targets");
+            var targetFindBlock = Profiler.Start(FullName, nameof(StepGrind), "Find Targets");
             foreach (IMyCubeBlock tool in shipyardItem.Tools)
             {
                 if (tool.Closed || tool.MarkedForClose)
@@ -292,7 +292,7 @@ namespace ShipyardMod.ProcessHandlers
             }
             targetFindBlock.End();
             shipyardItem.UpdatePowerUse();
-            Profiler.ProfilingBlock grindActionBlock = Profiler.Start(FullName, nameof(StepGrind), "Grind action");
+            var grindActionBlock = Profiler.Start(FullName, nameof(StepGrind), "Grind action");
             var removeTargets = new List<BlockTarget>();
             //do the grinding
             Utilities.InvokeBlocking(() =>
@@ -359,9 +359,10 @@ namespace ShipyardMod.ProcessHandlers
 
                                                  if (!target.Block.IsFullyDismounted)
                                                  {
-                                                     Profiler.ProfilingBlock decreaseBlock = Profiler.Start(FullName, nameof(StepGrind), "DecreaseMountLevel");
+                                                     var decreaseBlock = Profiler.Start(FullName, nameof(StepGrind), "DecreaseMountLevel");
                                                      target.Block.DecreaseMountLevel(grindAmount, grinderInventory);
                                                      decreaseBlock.End();
+
                                                      Profiler.ProfilingBlock inventoryBlock = Profiler.Start(FullName, nameof(StepGrind), "Grind Inventory");
                                                      // First move everything into _tmpInventory
                                                      target.Block.MoveItemsFromConstructionStockpile(_tmpInventory);
@@ -382,12 +383,12 @@ namespace ShipyardMod.ProcessHandlers
                                                  // in which case we need to run both code blocks
                                                  if (target.Block.IsFullyDismounted)
                                                  {
-                                                     Profiler.ProfilingBlock dismountBlock = Profiler.Start(FullName, nameof(StepGrind), "FullyDismounted");
+                                                     var dismountBlock = Profiler.Start(FullName, nameof(StepGrind), "FullyDismounted");
                                                      var tmpItemList = new List<MyPhysicalInventoryItem>();
                                                      var blockEntity = target.Block.FatBlock as MyEntity;
                                                      if (blockEntity != null && blockEntity.HasInventory)
                                                      {
-                                                         Profiler.ProfilingBlock dismountInventory = Profiler.Start(FullName, nameof(StepGrind), "DismountInventory");
+                                                         var dismountInventory = Profiler.Start(FullName, nameof(StepGrind), "DismountInventory");
                                                          for (int i = 0; i < blockEntity.InventoryCount; ++i)
                                                          {
                                                              MyInventory blockInventory = blockEntity.GetInventory(i);
@@ -463,7 +464,7 @@ namespace ShipyardMod.ProcessHandlers
 
             if (shipyardItem.TargetBlocks.Count == 0)
             {
-                Profiler.ProfilingBlock sortBlock = Profiler.Start(FullName, nameof(StepWeld), "Sort Targets");
+                var sortBlock = Profiler.Start(FullName, nameof(StepWeld), "Sort Targets");
                 shipyardItem.TargetBlocks.Clear();
                 shipyardItem.ProxDict.Clear();
                 //precalculate all the BlockTarget for our target grids to speed things up
