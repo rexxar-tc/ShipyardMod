@@ -347,7 +347,7 @@ namespace ShipyardMod.ProcessHandlers
                                                  double efficiency = 1 - (target.ToolDist[tool.EntityId] / 200000);
                                                  if (efficiency < 0.1)
                                                      efficiency = 0.1;
-                                                 Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] distance=[{2:F2}m] efficiency=[{3:F5}]", tool.DisplayNameText, b, Math.Sqrt(target.ToolDist[tool.EntityId]), efficiency));
+                                                 //Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] distance=[{2:F2}m] efficiency=[{3:F5}]", tool.DisplayNameText, b, Math.Sqrt(target.ToolDist[tool.EntityId]), efficiency));
 
                                                  if (!shipyardItem.YardGrids.Contains(target.CubeGrid))
                                                  {
@@ -363,14 +363,14 @@ namespace ShipyardMod.ProcessHandlers
                                                      target.Block.DecreaseMountLevel(grindAmount, grinderInventory);
                                                      decreaseBlock.End();
 
-                                                     Profiler.ProfilingBlock inventoryBlock = Profiler.Start(FullName, nameof(StepGrind), "Grind Inventory");
+                                                     var inventoryBlock = Profiler.Start(FullName, nameof(StepGrind), "Grind Inventory");
                                                      // First move everything into _tmpInventory
                                                      target.Block.MoveItemsFromConstructionStockpile(_tmpInventory);
 
                                                      // Then move items into grinder inventory, factoring in our efficiency ratio
                                                      foreach (MyPhysicalInventoryItem item in _tmpInventory.GetItems())
                                                      {
-                                                         Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] Item[{2}] grind_amt[{3:F2}] collect_amt[{4:F2}]", tool.DisplayNameText, b, item.Content.SubtypeName, item.Amount, (double)item.Amount*efficiency));
+                                                         //Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] Item[{2}] grind_amt[{3:F2}] collect_amt[{4:F2}]", tool.DisplayNameText, b, item.Content.SubtypeName, item.Amount, (double)item.Amount*efficiency));
                                                          grinderInventory.Add(item, item.Amount * (MyFixedPoint)efficiency);
                                                      }
 
@@ -403,7 +403,7 @@ namespace ShipyardMod.ProcessHandlers
 
                                                              foreach (MyPhysicalInventoryItem item in tmpItemList)
                                                              {
-                                                                 Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] Item[{2}] inventory[{3:F2}] collected[{4:F2}]", tool.DisplayNameText, b, item.Content.SubtypeName, item.Amount, (double)item.Amount * efficiency));
+                                                                 //Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] Item[{2}] inventory[{3:F2}] collected[{4:F2}]", tool.DisplayNameText, b, item.Content.SubtypeName, item.Amount, (double)item.Amount * efficiency));
                                                                  blockInventory.Remove(item, item.Amount);
                                                                  grinderInventory.Add(item, item.Amount * (MyFixedPoint)efficiency);
                                                              }
@@ -678,7 +678,7 @@ namespace ShipyardMod.ProcessHandlers
                                                      double efficiency = 1 - (target.ToolDist[tool.EntityId] / 200000);
                                                      if (efficiency < 0.1)
                                                          efficiency = 0.1;
-                                                     Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] distance=[{2:F2}m] efficiency=[{3:F5}]", tool.DisplayNameText, i, Math.Sqrt(target.ToolDist[tool.EntityId]), efficiency));
+                                                     //Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] distance=[{2:F2}m] efficiency=[{3:F5}]", tool.DisplayNameText, i, Math.Sqrt(target.ToolDist[tool.EntityId]), efficiency));
                                                      /*
                                                       * We have to factor in our efficiency ratio before transferring to the block "construction stockpile",
                                                       * but that math isn't nearly as easy as it was with the grinder.
@@ -714,13 +714,13 @@ namespace ShipyardMod.ProcessHandlers
 
                                                          MyFixedPoint currentStock = welderInventory.GetItemAmount(componentId);
 
-                                                         Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] Component[{2}] missing[{3:F3}] inefficiency requires[{4:F3}] in_stock[{5:F3}]", tool.DisplayNameText, i, entry.Key, missing, totalRequired, currentStock));
+                                                         //Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] Component[{2}] missing[{3:F3}] inefficiency requires[{4:F3}] in_stock[{5:F3}]", tool.DisplayNameText, i, entry.Key, missing, totalRequired, currentStock));
                                                          if (currentStock < totalRequired && tool.UseConveyorSystem)
                                                          {
                                                              // Welder doesn't have totalRequired, so try to pull the difference from conveyors
                                                              welderInventory.PullAny(shipyardItem.ConnectedCargo, entry.Key, (int)Math.Ceiling((double)(totalRequired - currentStock)));
                                                              currentStock = welderInventory.GetItemAmount(componentId);
-                                                             Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] Component[{2}] - after conveyor pull - in_stock[{3:F3}]", tool.DisplayNameText, i, entry.Key, currentStock));
+                                                             //Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] Component[{2}] - after conveyor pull - in_stock[{3:F3}]", tool.DisplayNameText, i, entry.Key, currentStock));
                                                          }
 
                                                          // Now compute the number of components to delete
@@ -730,7 +730,7 @@ namespace ShipyardMod.ProcessHandlers
                                                          {
                                                              // The lesser of (missing, currentStock), times (1 minus) our efficiency fraction
                                                              MyFixedPoint toDelete = MyFixedPoint.Min(MyFixedPoint.Floor(currentStock), missing) * (MyFixedPoint)(1 - efficiency);
-                                                             Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] Component[{2}] amount lost due to distance [{3:F3}]", tool.DisplayNameText, i, entry.Key, toDelete));
+                                                             //Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] Component[{2}] amount lost due to distance [{3:F3}]", tool.DisplayNameText, i, entry.Key, toDelete));
                                                              welderInventory.RemoveItemsOfType(toDelete, componentId);
                                                          }
                                                      }

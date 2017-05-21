@@ -473,10 +473,19 @@ namespace ShipyardMod.Utility
                 var buttons = (IMyButtonPanel)outEntity;
                 buttons.ButtonPressed += yardItem.HandleButtonPressed;
                 var blockDef = (MyButtonPanelDefinition)MyDefinitionManager.Static.GetCubeBlockDefinition(buttons.BlockDefinition);
-                buttons.SetEmissiveParts("Emissive1", blockDef.ButtonColors[1 % blockDef.ButtonColors.Length], 1);
-                buttons.SetEmissiveParts("Emissive2", blockDef.ButtonColors[2 % blockDef.ButtonColors.Length], 1);
-                buttons.SetEmissiveParts("Emissive3", blockDef.ButtonColors[3 % blockDef.ButtonColors.Length], 1);
-                buttons.SetEmissiveParts("Emissive4", blockDef.ButtonColors[4 % blockDef.ButtonColors.Length], 1);
+                for (int i = 1; i <= 4; i ++)
+                {
+                    var c = blockDef.ButtonColors[i % blockDef.ButtonColors.Length];
+                    buttons.SetEmissiveParts($"Emissive{i}", new Color(c.X, c.Y, c.Z), c.W);
+                }
+                buttons.SetCustomButtonName(0, "Exit");
+                buttons.SetCustomButtonName(1, "Up");
+                buttons.SetCustomButtonName(2, "Down");
+                buttons.SetCustomButtonName(3, "Select");
+                //buttons.SetEmissiveParts("Emissive1", blockDef.ButtonColors[1 % blockDef.ButtonColors.Length], 1);
+                //buttons.SetEmissiveParts("Emissive2", blockDef.ButtonColors[2 % blockDef.ButtonColors.Length], 1);
+                //buttons.SetEmissiveParts("Emissive3", blockDef.ButtonColors[3 % blockDef.ButtonColors.Length], 1);
+                //buttons.SetEmissiveParts("Emissive4", blockDef.ButtonColors[4 % blockDef.ButtonColors.Length], 1);
             }
 
             foreach (IMyCubeBlock tool in yardItem.Tools)
@@ -487,6 +496,8 @@ namespace ShipyardMod.Utility
             }
 
             yardItem.UpdateMaxPowerUse();
+            yardItem.Settings = ShipyardSettings.Instance.GetYardSettings(yardItem.EntityId);
+            ProcessLocalYards.LocalYards.Add(yardItem);
         }
 
         private static void HandleShipyardState(byte[] data)
@@ -494,6 +505,8 @@ namespace ShipyardMod.Utility
             long gridId = BitConverter.ToInt64(data, 0);
             var type = (ShipyardType)data.Last();
 
+            Logging.Instance.WriteDebug("Got yard state: " + type);
+            Logging.Instance.WriteDebug($"Details: {gridId} {ProcessLocalYards.LocalYards.Count} [{string.Join(" ", data)}]");
 
             foreach (ShipyardItem yard in ProcessLocalYards.LocalYards)
             {

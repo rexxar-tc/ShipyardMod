@@ -47,7 +47,7 @@ namespace ShipyardMod
     [MySessionComponentDescriptor(MyUpdateOrder.BeforeSimulation)]
     public class ShipyardCore : MySessionComponentBase
     {
-        private const string Version = "v2.2";
+        private const string Version = "v2.3";
 
         //TODO
         public static volatile bool Debug;
@@ -322,7 +322,7 @@ namespace ShipyardMod
                                                             {
                                                                 handlerName = handler.GetType().Name;
                                                                 var handlerBlock = Profiler.Start(handler.GetType().FullName);
-                                                                Logging.Instance.WriteDebug(handlerName + " start");
+                                                                //Logging.Instance.WriteDebug(handlerName + " start");
                                                                 handler.Handle();
                                                                 handler.LastUpdate = DateTime.Now;
                                                                 handlerBlock.End();
@@ -434,12 +434,7 @@ namespace ShipyardMod
                 Communication.FadeList.Remove(removeLine);
             }
         }
-
-        public override void UpdatingStopped()
-        {
-            Utilities.SessionClosing = true;
-        }
-
+        
         protected override void UnloadData()
         {
             try
@@ -485,7 +480,7 @@ namespace ShipyardMod
         {
             _block = (IMyCollector)Container.Entity;
             _block.Components.TryGet(out _sink);
-            _block.NeedsUpdate = MyEntityUpdateEnum.NONE;
+            //_block.NeedsUpdate = MyEntityUpdateEnum.NONE;
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_FRAME;
             NeedsUpdate |= MyEntityUpdateEnum.EACH_10TH_FRAME;

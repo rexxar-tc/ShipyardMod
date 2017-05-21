@@ -70,6 +70,8 @@ namespace ShipyardMod.ItemClasses
             if (YardType == yardType)
                 return;
 
+            Logging.Instance.WriteDebug("YardItem.Init: " + yardType);
+
             YardType = yardType;
 
             foreach (IMyCubeGrid grid in ContainsGrids)
@@ -84,7 +86,9 @@ namespace ShipyardMod.ItemClasses
                              {
                                  foreach (IMyCubeBlock tool in Tools)
                                  {
-                                     (tool as IMyFunctionalBlock)?.RequestEnable(true);
+                                     var myFunctionalBlock = tool as IMyFunctionalBlock;
+                                     if (myFunctionalBlock != null)
+                                         myFunctionalBlock.Enabled = true; //.RequestEnable(true);
                                  }
                              });
 
@@ -231,7 +235,7 @@ namespace ShipyardMod.ItemClasses
                                      foreach (IMyCubeBlock tool in Tools)
                                      {
                                          float power = 5;
-                                         Logging.Instance.WriteDebug(String.Format("Tool[{0}] Base power usage [{1:F1} MW]", tool.DisplayNameText, power));
+                                         //Logging.Instance.WriteDebug(String.Format("Tool[{0}] Base power usage [{1:F1} MW]", tool.DisplayNameText, power));
                                          int i = 0;
                                          foreach (BlockTarget blockTarget in BlocksToProcess[tool.EntityId])
                                          {
@@ -239,12 +243,12 @@ namespace ShipyardMod.ItemClasses
                                                  continue;
 
                                              float laserPower = 30 + 300 * multiplier * (float)blockTarget.ToolDist[tool.EntityId] / 200000;
-                                             Logging.Instance.WriteDebug(String.Format("Tool[{0}] laser[{1}] distance[{2:F1}m] multiplier[{3:F1}x] additional power req [{4:F1} MW]", tool.DisplayNameText, i, Math.Sqrt(blockTarget.ToolDist[tool.EntityId]), multiplier, laserPower));
+                                             //Logging.Instance.WriteDebug(String.Format("Tool[{0}] laser[{1}] distance[{2:F1}m] multiplier[{3:F1}x] additional power req [{4:F1} MW]", tool.DisplayNameText, i, Math.Sqrt(blockTarget.ToolDist[tool.EntityId]), multiplier, laserPower));
                                              power += laserPower;
                                              i++;
                                          }
 
-                                         Logging.Instance.WriteDebug(String.Format("Tool[{0}] Total computed power [{1:F1} MW]", tool.DisplayNameText, power));
+                                         //Logging.Instance.WriteDebug(String.Format("Tool[{0}] Total computed power [{1:F1} MW]", tool.DisplayNameText, power));
                                          tool.GameLogic.GetAs<ShipyardCorner>().SetPowerUse(power);
                                          Communication.SendToolPower(tool.EntityId, power);
                                      }

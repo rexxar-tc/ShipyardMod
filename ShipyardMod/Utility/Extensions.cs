@@ -91,7 +91,7 @@ namespace ShipyardMod.Utility
             foreach (KeyValuePair<string, int> entry in toPull)
             {
                 int remainingAmount = entry.Value;
-                Logging.Instance.WriteDebug(entry.Key + entry.Value);
+                //Logging.Instance.WriteDebug(entry.Key + entry.Value);
                 foreach (IMyCubeBlock block in sourceInventories)
                 {
                     if (block == null || block.Closed)

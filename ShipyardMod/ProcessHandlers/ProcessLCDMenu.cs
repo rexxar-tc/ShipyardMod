@@ -59,6 +59,7 @@ namespace ShipyardMod.ProcessHandlers
 
                     var blocks = new List<IMySlimBlock>();
                     yardGrid.GetBlocks(blocks);
+                    bool superFound = false;
 
                     foreach (IMySlimBlock slimBlock in blocks)
                     {
@@ -81,14 +82,16 @@ namespace ShipyardMod.ProcessHandlers
                             if (buttons == null)
                                 continue;
 
+                            superFound = true;
                             found = true;
-
+                            Logging.Instance.WriteDebug("Found LCD pair for grid: " + item.EntityId);
                             Utilities.Invoke(() =>
                                              {
                                                  long id = item.EntityId;
                                                  item.Menu = new LCDMenu();
-                                                 panel.RequestEnable(false);
-                                                 panel.RequestEnable(true);
+                                                 panel.Enabled = true;
+                                                 //panel.RequestEnable(false);
+                                                 //panel.RequestEnable(true);
                                                  item.Menu.BindButtonPanel(buttons);
                                                  item.Menu.BindLCD(panel);
                                                  var mainMenu = new MenuItem("", "", null, MenuDel(id));
@@ -119,6 +122,7 @@ namespace ShipyardMod.ProcessHandlers
                         if (found)
                             break;
                     }
+                    Logging.Instance.WriteDebug($"SuperFind {item.EntityId}: {superFound}");
                 }
             }
         }

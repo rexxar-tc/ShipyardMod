@@ -34,6 +34,7 @@ namespace ShipyardMod.ProcessHandlers
 
         public override void Handle()
         {
+            Logging.Instance.WriteDebug("ProcessLocalYards Start");
             var removeYards = new HashSet<ShipyardItem>();
 
             foreach (ShipyardItem item in LocalYards)
@@ -51,8 +52,6 @@ namespace ShipyardMod.ProcessHandlers
                 if (item.YardType != ShipyardType.Disabled)
                     continue;
 
-                var entities = new List<IMyEntity>();
-
                 var corners = new Vector3D[8];
                 item.ShipyardBox.GetCorners(corners, 0);
                 double dist = Vector3D.DistanceSquared(corners[0], item.ShipyardBox.Center);
@@ -60,7 +59,7 @@ namespace ShipyardMod.ProcessHandlers
                 var sphere = new BoundingSphereD(item.ShipyardBox.Center, dist);
 
                 //Utilities.InvokeBlocking(()=> entities = MyAPIGateway.Entities.GetTopMostEntitiesInSphere(ref sphere));
-                entities = MyAPIGateway.Entities.GetTopMostEntitiesInSphere(ref sphere);
+                List<IMyEntity> entities = MyAPIGateway.Entities.GetTopMostEntitiesInSphere(ref sphere);
 
                 if (entities.Count == 0)
                 {
