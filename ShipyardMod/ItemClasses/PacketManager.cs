@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using VRage.Game;
+using VRage.Utils;
 using VRageMath;
 
 namespace ShipyardMod.ItemClasses
@@ -42,7 +43,7 @@ namespace ShipyardMod.ItemClasses
             foreach (PacketItem packet in _packets)
             {
                 //thanks to Digi for showing me how this thing works
-                MyTransparentGeometry.AddPointBillboard("ShipyardPacket", Color, packet.Position, 0.3f, packet.Ticks);
+                MyTransparentGeometry.AddPointBillboard(MyStringId.GetOrCompute("ShipyardPacket"), Color, packet.Position, 0.3f, packet.Ticks);
             }
         }
 

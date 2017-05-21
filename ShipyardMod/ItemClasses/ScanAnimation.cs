@@ -1,4 +1,6 @@
-﻿using VRage.Game;
+﻿using ShipyardMod.Utility;
+using VRage.Game;
+using VRage.Utils;
 using VRageMath;
 
 namespace ShipyardMod.ItemClasses
@@ -71,9 +73,9 @@ namespace ShipyardMod.ItemClasses
 
             //draw the texture oriented to the shipyard grid
             if (_scanningZ)
-                MyTransparentGeometry.AddBillboardOriented("ScanTexture", _color, _line.Origin, _line.ZLeft, _line.ZUp, _line.ZWidth, _line.ZLength);
+                MyTransparentGeometry.AddBillboardOriented(MyStringId.GetOrCompute("ScanTexture"), _color, _line.Origin, _line.ZLeft, _line.ZUp, _line.ZWidth, _line.ZLength);
             else
-                MyTransparentGeometry.AddBillboardOriented("ScanTexture", _color, _line.Origin, _line.XLeft, _line.XUp, _line.XWidth, _line.XLength);
+                MyTransparentGeometry.AddBillboardOriented(MyStringId.GetOrCompute("ScanTexture"), _color, _line.Origin, _line.XLeft, _line.XUp, _line.XWidth, _line.XLength);
 
             return true;
         }

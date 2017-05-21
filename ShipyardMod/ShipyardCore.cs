@@ -369,7 +369,7 @@ namespace ShipyardMod
 
                     line.LinePackets?.DrawPackets();
 
-                    MySimpleObjectDraw.DrawLine(line.Start, line.End, "ShipyardLaser", ref line.Color, 0.4f);
+                    MySimpleObjectDraw.DrawLine(line.Start, line.End, MyStringId.GetOrCompute("ShipyardLaser"), ref line.Color, 0.4f);
                 }
             }
 
@@ -379,7 +379,7 @@ namespace ShipyardMod
                 Vector4 color = new Color(box.PackedColor).ToVector4();
                 foreach (LineItem line in box.Lines)
                 {
-                    MySimpleObjectDraw.DrawLine(line.Start, line.End, "WeaponLaserIgnoreDepth", ref color, 1f);
+                    MySimpleObjectDraw.DrawLine(line.Start, line.End, MyStringId.GetOrCompute("WeaponLaserIgnoreDepth"), ref color, 1f);
                 }
             }
 
@@ -391,7 +391,7 @@ namespace ShipyardMod
 
                 foreach (LineItem line in item.BoxLines)
                 {
-                    MySimpleObjectDraw.DrawLine(line.Start, line.End, "WeaponLaserIgnoreDepth", ref color, 1f);
+                    MySimpleObjectDraw.DrawLine(line.Start, line.End, MyStringId.GetOrCompute("WeaponLaserIgnoreDepth"), ref color, 1f);
                 }
             }
         }
@@ -407,7 +407,7 @@ namespace ShipyardMod
             drawColor.W = (float)((Math.Sin(item.PulseVal) + 1) / 2);
             if (drawColor.W <= 0.05)
                 item.Descend = !item.Descend;
-            MySimpleObjectDraw.DrawLine(item.Start, item.End, "ShipyardLaser", ref drawColor, drawColor.W * 0.4f);
+            MySimpleObjectDraw.DrawLine(item.Start, item.End, MyStringId.GetOrCompute("ShipyardLaser"), ref drawColor, drawColor.W * 0.4f);
         }
 
         private void FadeLines()
@@ -426,7 +426,7 @@ namespace ShipyardMod
                 Vector4 drawColor = line.Color;
                 //do a cubic fade out
                 drawColor.W = line.FadeVal * line.FadeVal * line.FadeVal;
-                MySimpleObjectDraw.DrawLine(line.Start, line.End, "ShipyardLaser", ref drawColor, drawColor.W * 0.4f);
+                MySimpleObjectDraw.DrawLine(line.Start, line.End, MyStringId.GetOrCompute("ShipyardLaser"), ref drawColor, drawColor.W * 0.4f);
             }
 
             foreach (LineItem removeLine in linesToRemove)
