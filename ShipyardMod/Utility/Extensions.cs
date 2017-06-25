@@ -80,19 +80,19 @@ namespace ShipyardMod.Utility
             return block.Integrity / block.MaxIntegrity;
         }
 
-        public static bool PullAny(this MyInventory inventory, HashSet<IMyCubeBlock> sourceInventories, string component, int count)
+        public static bool PullAny(this MyInventory inventory, HashSet<IMyTerminalBlock> sourceInventories, string component, int count)
         {
             return PullAny(inventory, sourceInventories, new Dictionary<string, int> {{component, count}});
         }
 
-        public static bool PullAny(this MyInventory inventory, HashSet<IMyCubeBlock> sourceInventories, Dictionary<string, int> toPull)
+        public static bool PullAny(this MyInventory inventory, HashSet<IMyTerminalBlock> sourceInventories, Dictionary<string, int> toPull)
         {
             bool result = false;
             foreach (KeyValuePair<string, int> entry in toPull)
             {
                 int remainingAmount = entry.Value;
                 //Logging.Instance.WriteDebug(entry.Key + entry.Value);
-                foreach (IMyCubeBlock block in sourceInventories)
+                foreach (IMyTerminalBlock block in sourceInventories)
                 {
                     if (block == null || block.Closed)
                         continue;

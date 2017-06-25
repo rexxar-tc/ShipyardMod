@@ -15,15 +15,31 @@ namespace ShipyardMod.ItemClasses
         private double _multiplier;
         private double _travelDist;
         public Vector4 Color;
-        public Vector3D Origin;
-        public Vector3D Target;
+        public Vector3D Origin { get; private set; }
+        public Vector3D Target { get; private set; }
+        private readonly bool _invert;
 
-        public PacketManager(Vector3D origin, Vector3D target, Vector4 color, double spacing = 10)
+        public PacketManager(Vector3D origin, Vector3D target, Vector4 color, double spacing = 10, bool invert = false)
         {
             Origin = origin;
             Target = target;
             Color = color;
+            _invert = invert;
             _spacingSq = spacing * spacing;
+        }
+
+        public void Update(Vector3D origin, Vector3D target)
+        {
+            if (_invert)
+            {
+                Origin = target;
+                Target = origin;
+            }
+            else
+            {
+                Origin = origin;
+                Target = target;
+            }
         }
 
         private void Init()

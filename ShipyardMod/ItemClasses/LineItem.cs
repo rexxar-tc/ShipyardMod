@@ -1,4 +1,5 @@
-﻿using VRageMath;
+﻿using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace ShipyardMod.ItemClasses
 {
@@ -13,6 +14,9 @@ namespace ShipyardMod.ItemClasses
         public bool Pulse;
         public double PulseVal;
         public Vector3D Start;
+        public IMyCubeBlock EmitterBlock;
+        public IMyCubeGrid TargetGrid;
+        public Vector3I TargetBlock;
 
         public LineItem(Vector3D start, Vector3D end)
         {

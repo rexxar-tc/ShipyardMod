@@ -15,6 +15,7 @@ namespace ShipyardMod.Settings
             GuideEnabled = true;
             WeldMultiplier = 0.1f;
             GrindMultiplier = 0.1f;
+            AdvancedLocking = false;
         }
 
         public readonly long EntityId;
@@ -22,6 +23,7 @@ namespace ShipyardMod.Settings
         public bool GuideEnabled;
         public float WeldMultiplier;
         public float GrindMultiplier;
+        public bool AdvancedLocking;
     }
 
     [XmlInclude(typeof(YardSettingsStruct))]

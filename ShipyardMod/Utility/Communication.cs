@@ -373,13 +373,16 @@ namespace ShipyardMod.Utility
                               Color = new Color(item.PackedColor).ToVector4(),
                               Pulse = item.Pulse,
                               PulseVal = 0,
-                              Index = item.EmitterIndex
+                              Index = item.EmitterIndex,
+                              EmitterBlock = tool,
+                              TargetGrid = grid,
+                              TargetBlock = item.BlockPos,
                           };
 
             if (newLine.Color == Color.OrangeRed.ToVector4())
             {
                 newLine.Color.W = 0.5f;
-                newLine.LinePackets = new PacketManager(newLine.End, newLine.Start, Color.Yellow.ToVector4());
+                newLine.LinePackets = new PacketManager(newLine.End, newLine.Start, Color.Yellow.ToVector4(), invert: true);
             }
             else if (newLine.Color == Color.DarkCyan.ToVector4())
                 newLine.LinePackets = new PacketManager(newLine.Start, newLine.End, Color.CadetBlue.ToVector4());

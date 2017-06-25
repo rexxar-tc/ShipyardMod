@@ -109,7 +109,7 @@ namespace ShipyardMod.ItemClasses
                 if (Panel.GetPublicText() == result)
                     return;
                 Panel.WritePublicText(result);
-                Panel.ShowPrivateTextOnScreen();
+                //Panel.ShowPrivateTextOnScreen();
                 Panel.ShowPublicTextOnScreen();
             }
         }

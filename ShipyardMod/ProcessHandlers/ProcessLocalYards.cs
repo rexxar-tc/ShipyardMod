@@ -40,14 +40,18 @@ namespace ShipyardMod.ProcessHandlers
             foreach (ShipyardItem item in LocalYards)
             {
                 //see if the shipyard has been deleted
-                if (item.YardEntity.Closed || item.YardEntity.Physics == null || !item.YardEntity.Physics.IsStatic || item.YardType == ShipyardType.Invalid)
+                if (item.YardEntity.Closed || item.YardEntity.Physics == null || item.YardType == ShipyardType.Invalid
+                    || (item.StaticYard && !item.YardEntity.Physics.IsStatic))
                 {
                     //the client shouldn't tell the server the yard is invalid
                     //item.Disable();
                     removeYards.Add(item);
                     continue;
                 }
-                UpdateBoxLines(item);
+
+                if (item.StaticYard)
+                    UpdateBoxLines(item);
+
                 //don't draw boxes inside active yards, it's distracting
                 if (item.YardType != ShipyardType.Disabled)
                     continue;

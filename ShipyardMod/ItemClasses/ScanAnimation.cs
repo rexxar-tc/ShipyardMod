@@ -9,7 +9,8 @@ namespace ShipyardMod.ItemClasses
     {
         //each sweep takes 3 seconds (times 60 updates)
         //Lerp takes a percentage, to just take the reciprocal of 3*60
-        private const double Multiplier = 1d / 180d;
+        private const double MULTIPLIER = 1d / 180d;
+        private static readonly MyStringId TextureId = MyStringId.GetOrCompute("ScanTexture");
         private readonly Vector4 _color = Color.Green.ToVector4();
         private readonly Vector3D[] _endpoints = new Vector3D[4];
 
@@ -73,9 +74,9 @@ namespace ShipyardMod.ItemClasses
 
             //draw the texture oriented to the shipyard grid
             if (_scanningZ)
-                MyTransparentGeometry.AddBillboardOriented(MyStringId.GetOrCompute("ScanTexture"), _color, _line.Origin, _line.ZLeft, _line.ZUp, _line.ZWidth, _line.ZLength);
+                MyTransparentGeometry.AddBillboardOriented(TextureId, _color, _line.Origin, _line.ZLeft, _line.ZUp, _line.ZWidth, _line.ZLength);
             else
-                MyTransparentGeometry.AddBillboardOriented(MyStringId.GetOrCompute("ScanTexture"), _color, _line.Origin, _line.XLeft, _line.XUp, _line.XWidth, _line.XLength);
+                MyTransparentGeometry.AddBillboardOriented(TextureId, _color, _line.Origin, _line.XLeft, _line.XUp, _line.XWidth, _line.XLength);
 
             return true;
         }
@@ -91,11 +92,11 @@ namespace ShipyardMod.ItemClasses
             if (_scanningZ)
             {
                 //calculate the next position
-                _line.Origin = Vector3D.Lerp(_endpoints[0], _endpoints[1], _ticks * Multiplier);
+                _line.Origin = Vector3D.Lerp(_endpoints[0], _endpoints[1], _ticks * MULTIPLIER);
 
                 //line has reached the end
                 //flip the flag so we start scanning the x plane
-                if (_ticks * Multiplier >= 1)
+                if (_ticks * MULTIPLIER >= 1)
                 {
                     _ticks = 0;
                     _scanningZ = false;
@@ -103,11 +104,11 @@ namespace ShipyardMod.ItemClasses
             }
             else
             {
-                _line.Origin = Vector3D.Lerp(_endpoints[2], _endpoints[3], _ticks * Multiplier);
+                _line.Origin = Vector3D.Lerp(_endpoints[2], _endpoints[3], _ticks * MULTIPLIER);
 
                 //line has reached the end
                 //we're done, so return false to let the caller know to stop drawing
-                if (_ticks * Multiplier >= 1)
+                if (_ticks * MULTIPLIER >= 1)
                 {
                     return false;
                 }

@@ -74,7 +74,8 @@ namespace ShipyardMod.ProcessHandlers
 
                 using (Profiler.Start(FullName, nameof(Handle), "Physics Check"))
                 {
-                    if (item.YardEntity.Physics == null || !item.YardEntity.Physics.IsStatic || !((IMyCubeGrid)item.YardEntity).IsInVoxels())
+                    if (item.YardEntity.Physics == null 
+                        || item.StaticYard && (!item.YardEntity.Physics.IsStatic || !((IMyCubeGrid)item.YardEntity).IsInVoxels()))
                     {
                         Logging.Instance.WriteLine("remove item physics");
                         itemsToRemove.Add(item);
@@ -133,14 +134,24 @@ namespace ShipyardMod.ProcessHandlers
                     continue;
                 }
 
+                if (_corners.Any(c => c.BlockDefinition.SubtypeId != _corners[0].BlockDefinition.SubtypeId))
+                {
+                    foreach (var tool in _corners)
+                        Communication.SendCustomInfo(tool.EntityId, $"Invalid Shipyard: All 8 corner blocks must be the same type!");
+                    continue;
+                }
+                
                 using (Profiler.Start(FullName, nameof(Handle), "Static Check"))
                 {
-                    if (!grid.IsStatic || !grid.IsInVoxels())
+                    if (_corners[0].BlockDefinition.SubtypeId == "ShipyardCorner_Large" && !ShipyardCore.Debug)
                     {
-                        Logging.Instance.WriteDebug($"Yard {grid.EntityId} failed: Static check");
-                        foreach (var tool in _corners)
-                            Communication.SendCustomInfo(tool.EntityId, "Invalid Shipyard: Shipyard must be anchored to voxels!");
-                        continue;
+                        if (!grid.IsStatic || !grid.IsInVoxels())
+                        {
+                            Logging.Instance.WriteDebug($"Yard {grid.EntityId} failed: Static check");
+                            foreach (var tool in _corners)
+                                Communication.SendCustomInfo(tool.EntityId, "Invalid Shipyard: Shipyard must be anchored to voxels!");
+                            continue;
+                        }
                     }
                 }
 
@@ -178,8 +189,11 @@ namespace ShipyardMod.ProcessHandlers
         {
             bool found = true;
 
-            if (tools.Any(x => x.Closed || x.Physics == null))
+            if (tools.Any(x => x.Closed || x.MarkedForClose))
+            {
+                Logging.Instance.WriteDebug("tools closed?");
                 return false;
+            }
 
             Utilities.InvokeBlocking(() =>
                                      {
@@ -187,18 +201,26 @@ namespace ShipyardMod.ProcessHandlers
                                          {
                                              IMyInventory toolInventory = ((MyEntity)tools[0]).GetInventory();
 
+                                             if (toolInventory == null)
+                                             {
+                                                 Logging.Instance.WriteDebug("null toolInventory");
+                                                 return;
+                                             }
+
                                              for (int i = 1; i < tools.Count; ++i)
                                              {
                                                  IMyInventory compareInventory = ((MyEntity)tools[i]).GetInventory();
 
-                                                 if (compareInventory == null || toolInventory == null)
+                                                 if (compareInventory == null)
                                                  {
+                                                     Logging.Instance.WriteDebug($"Null inventory at {i}");
                                                      found = false;
                                                      return;
                                                  }
 
                                                  if (!toolInventory.IsConnectedTo(compareInventory))
                                                  {
+                                                     Logging.Instance.WriteDebug($"Tool not connected at {i}");
                                                      found = false;
                                                      return;
                                                  }

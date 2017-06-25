@@ -345,6 +345,8 @@ namespace ShipyardMod.ProcessHandlers
                                                   * We impose a minimum efficiency of 0.1 (10%), which happens at distances > ~450m
                                                   */
                                                  double efficiency = 1 - (target.ToolDist[tool.EntityId] / 200000);
+                                                 if (!shipyardItem.StaticYard)
+                                                     efficiency /= 2;
                                                  if (efficiency < 0.1)
                                                      efficiency = 0.1;
                                                  //Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] distance=[{2:F2}m] efficiency=[{3:F5}]", tool.DisplayNameText, b, Math.Sqrt(target.ToolDist[tool.EntityId]), efficiency));
@@ -371,7 +373,7 @@ namespace ShipyardMod.ProcessHandlers
                                                      foreach (MyPhysicalInventoryItem item in _tmpInventory.GetItems())
                                                      {
                                                          //Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] Item[{2}] grind_amt[{3:F2}] collect_amt[{4:F2}]", tool.DisplayNameText, b, item.Content.SubtypeName, item.Amount, (double)item.Amount*efficiency));
-                                                         grinderInventory.Add(item, item.Amount * (MyFixedPoint)efficiency);
+                                                         grinderInventory.Add(item, (MyFixedPoint)Math.Round((double)item.Amount * efficiency));
                                                      }
 
                                                      // Then clear out everything left in _tmpInventory
@@ -405,7 +407,7 @@ namespace ShipyardMod.ProcessHandlers
                                                              {
                                                                  //Logging.Instance.WriteDebug(String.Format("Grinder[{0}]block[{1}] Item[{2}] inventory[{3:F2}] collected[{4:F2}]", tool.DisplayNameText, b, item.Content.SubtypeName, item.Amount, (double)item.Amount * efficiency));
                                                                  blockInventory.Remove(item, item.Amount);
-                                                                 grinderInventory.Add(item, item.Amount * (MyFixedPoint)efficiency);
+                                                                 grinderInventory.Add(item, (MyFixedPoint)Math.Round((double)item.Amount * efficiency));
                                                              }
                                                          }
                                                          dismountInventory.End();
@@ -676,6 +678,8 @@ namespace ShipyardMod.ProcessHandlers
                                                       * Efficiency decay/distance formula is the same as above for grinder
                                                       */
                                                      double efficiency = 1 - (target.ToolDist[tool.EntityId] / 200000);
+                                                     if (!shipyardItem.StaticYard)
+                                                         efficiency /= 2;
                                                      if (efficiency < 0.1)
                                                          efficiency = 0.1;
                                                      //Logging.Instance.WriteDebug(String.Format("Welder[{0}]block[{1}] distance=[{2:F2}m] efficiency=[{3:F5}]", tool.DisplayNameText, i, Math.Sqrt(target.ToolDist[tool.EntityId]), efficiency));

@@ -9,6 +9,8 @@ using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
 using System;
+using VRage.Collections;
+using VRage.Game.Components;
 
 namespace ShipyardMod.ItemClasses
 {
@@ -32,9 +34,9 @@ namespace ShipyardMod.ItemClasses
         public Dictionary<long, BlockTarget[]> BlocksToProcess = new Dictionary<long, BlockTarget[]>();
 
         public List<LineItem> BoxLines = new List<LineItem>(12);
-        public HashSet<IMyCubeBlock> ConnectedCargo = new HashSet<IMyCubeBlock>();
+        public HashSet<IMyTerminalBlock> ConnectedCargo = new HashSet<IMyTerminalBlock>();
 
-        public HashSet<IMyCubeGrid> ContainsGrids = new HashSet<IMyCubeGrid>();
+        public MyConcurrentHashSet<IMyCubeGrid> ContainsGrids = new MyConcurrentHashSet<IMyCubeGrid>();
         public HashSet<IMyCubeGrid> IntersectsGrids = new HashSet<IMyCubeGrid>();
 
         public LCDMenu Menu = null;
@@ -51,6 +53,7 @@ namespace ShipyardMod.ItemClasses
         public List<IMyCubeGrid> YardGrids = new List<IMyCubeGrid>();
 
         public ShipyardType YardType;
+        public bool StaticYard;
 
         public ShipyardItem(MyOrientedBoundingBoxD box, IMyCubeBlock[] tools, ShipyardType yardType, IMyEntity yardEntity)
         {
@@ -58,6 +61,7 @@ namespace ShipyardMod.ItemClasses
             Tools = tools;
             YardType = yardType;
             YardEntity = yardEntity;
+            StaticYard = tools[0].BlockDefinition.SubtypeId == "ShipyardCorner_Large";
         }
 
         public long EntityId
@@ -200,21 +204,26 @@ namespace ShipyardMod.ItemClasses
 
             float maxpower = 5 + Settings.BeamCount * (30 + 300 * multiplier * (float)Vector3D.DistanceSquared(corners[0], corners[6]) / 200000);
 
+            if (!StaticYard)
+                maxpower *= 2;
+
             foreach (IMyCubeBlock tool in Tools)
             {
                 ((IMyCollector)tool).GameLogic.GetAs<ShipyardCorner>().SetMaxPower(maxpower);
             }
         }
-        public void UpdatePowerUse()
+
+        public void UpdatePowerUse(float addedPower = 0)
         {
+            addedPower /= 8;
             if (YardType == ShipyardType.Disabled || YardType == ShipyardType.Invalid)
             {
                 Utilities.Invoke(() =>
                                  {
                                      foreach (IMyCubeBlock tool in Tools)
                                      {
-                                         tool.GameLogic.GetAs<ShipyardCorner>().SetPowerUse(5);
-                                         Communication.SendToolPower(tool.EntityId, 5);
+                                         tool.GameLogic.GetAs<ShipyardCorner>().SetPowerUse(5 + addedPower);
+                                         Communication.SendToolPower(tool.EntityId, 5 + addedPower);
                                      }
                                  });
             }
@@ -248,7 +257,15 @@ namespace ShipyardMod.ItemClasses
                                              i++;
                                          }
 
+                                         if (!StaticYard)
+                                             power *= 2;
+
+                                         power += addedPower;
+
                                          //Logging.Instance.WriteDebug(String.Format("Tool[{0}] Total computed power [{1:F1} MW]", tool.DisplayNameText, power));
+                                         var log = tool.GameLogic.GetAs<ShipyardCorner>();
+                                         if (log == null)
+                                             continue;
                                          tool.GameLogic.GetAs<ShipyardCorner>().SetPowerUse(power);
                                          Communication.SendToolPower(tool.EntityId, power);
                                      }
@@ -262,6 +279,41 @@ namespace ShipyardMod.ItemClasses
             {
                 newGrid.OnGridSplit += OnGridSplit;
                 YardGrids.Add(newGrid);
+            }
+        }
+
+        public void UpdatePosition()
+        {
+            ShipyardBox = MathUtility.CreateOrientedBoundingBox((IMyCubeGrid)YardEntity, Tools.Select(x => x.GetPosition()).ToList(), 2.5);
+        }
+
+        /// <summary>
+        /// Gives grids in the shipyard a slight nudge to help them match velocity when the shipyard is moving.
+        /// 
+        /// Code donated by Equinox
+        /// </summary>
+        public void NudgeGrids()
+        {
+        //magic value of 0.005 here was determined experimentally.
+        //value is just enough to assist with matching velocity to the shipyard, but not enough to prevent escape
+            foreach (var grid in ContainsGrids)
+            {
+                if (Vector3D.IsZero(grid.Physics.LinearVelocity - YardEntity.Physics.LinearVelocity))
+                    continue;
+
+                grid.Physics.ApplyImpulse(grid.Physics.Mass * Vector3D.ClampToSphere((YardEntity.Physics.LinearVelocity - grid.Physics.LinearVelocity), 0.005), grid.Physics.CenterOfMassWorld);
+            }
+            
+            foreach (var grid in YardGrids)
+            {
+                if (!Settings.AdvancedLocking)
+                    grid.Physics.ApplyImpulse(grid.Physics.Mass * Vector3D.ClampToSphere((YardEntity.Physics.LinearVelocity - grid.Physics.LinearVelocity), 0.005), grid.Physics.CenterOfMassWorld);
+                else
+                {
+                    double powerUse = MathUtility.MatchShipVelocity(grid, YardEntity, true);
+                    if(powerUse > 0)
+                    UpdatePowerUse((float)powerUse);
+                }
             }
         }
     }

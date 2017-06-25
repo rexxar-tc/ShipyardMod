@@ -2,7 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using ShipyardMod.ItemClasses;
+using VRage.Game;
+using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using VRageMath;
 
 namespace ShipyardMod.Utility
@@ -14,6 +17,13 @@ namespace ShipyardMod.Utility
             new Vector3D(0.8103569, 0.2971599, 0.7976569),
             new Vector3D(0.81244801, -0.813483256, -0.312517739),
             new Vector3D(-0.311901606, -0.81946053, 0.802108187)
+        };
+
+        private static readonly Vector3D[] SmallOffsets =
+        {
+            new Vector3D(-0.84227, 0.84227, 0.34794),
+            new Vector3D(0.34649, 0.84227, -0.84083),
+            new Vector3D(-0.84227, -0.34649, -0.84083),
         };
 
         /// <summary>
@@ -136,7 +146,10 @@ namespace ShipyardMod.Utility
 
         public static Vector3D CalculateEmitterOffset(IMyCubeBlock tool, byte index)
         {
-            return Vector3D.Transform(Offsets[index], tool.WorldMatrix);
+            if (tool.BlockDefinition.SubtypeId.EndsWith("_Large"))
+                return Vector3D.Transform(Offsets[index], tool.WorldMatrix);
+            else
+                return Vector3D.Transform(SmallOffsets[index], tool.WorldMatrix);
         }
 
         /// <summary>
@@ -288,6 +301,44 @@ namespace ShipyardMod.Utility
         public static double Pow15(double val)
         {
             return val * Sqrt(val);
+        }
+
+        public static double MatchShipVelocity(IMyEntity modify, IMyEntity dest, bool recoil)
+        {
+            // local velocity of dest
+            var velTarget = dest.Physics.GetVelocityAtPoint(modify.Physics.CenterOfMassWorld);
+            var distanceFromTargetCom = modify.Physics.CenterOfMassWorld - dest.Physics.CenterOfMassWorld;
+
+            var accelLinear = dest.Physics.LinearAcceleration;
+            var omegaVector = dest.Physics.AngularVelocity + dest.Physics.AngularAcceleration * MyEngineConstants.PHYSICS_STEP_SIZE_IN_SECONDS;
+            var omegaSquared = omegaVector.LengthSquared();
+            // omega^2 * r == a
+            var accelRotational = omegaSquared * -distanceFromTargetCom;
+            var accelTarget = accelLinear + accelRotational;
+
+            var velTargetNext = velTarget + accelTarget * MyEngineConstants.PHYSICS_STEP_SIZE_IN_SECONDS;
+            var velModifyNext = modify.Physics.LinearVelocity;// + modify.Physics.LinearAcceleration * MyEngineConstants.PHYSICS_STEP_SIZE_IN_SECONDS;
+
+            var linearImpulse = modify.Physics.Mass * (velTargetNext - velModifyNext);
+
+            // Angular matching.
+            // (dAA*dt + dAV) == (mAA*dt + mAV + tensorInverse*mAI)
+            var avelModifyNext = modify.Physics.AngularVelocity + modify.Physics.AngularAcceleration * MyEngineConstants.PHYSICS_STEP_SIZE_IN_SECONDS;
+            var angularDV = omegaVector - avelModifyNext;
+            var angularImpulse = Vector3.Zero;
+            // var angularImpulse = Vector3.TransformNormal(angularDV, modify.Physics.RigidBody.InertiaTensor); not accessible :/
+
+            // based on the large grid, small ion thruster.
+            const double wattsPerNewton = (3.36e6 / 288000);
+            // based on the large grid gyro
+            const double wattsPerNewtonMeter = (0.00003 / 3.36e7);
+            // (W/N) * (N*s) + (W/(N*m))*(N*m*s) == W
+            var powerCorrectionInJoules = (wattsPerNewton * linearImpulse.Length()) + (wattsPerNewtonMeter * angularImpulse.Length());
+            modify.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, linearImpulse, modify.Physics.CenterOfMassWorld, angularImpulse);
+            if(recoil)
+                dest.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE, -linearImpulse, dest.Physics.CenterOfMassWorld, -angularImpulse);
+
+            return powerCorrectionInJoules * MyEngineConstants.PHYSICS_STEP_SIZE_IN_SECONDS;
         }
     }
 }

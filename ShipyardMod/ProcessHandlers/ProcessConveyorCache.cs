@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
+using Sandbox.Game.GameSystems;
 using Sandbox.ModAPI;
 using ShipyardMod.ItemClasses;
 using ShipyardMod.Utility;
@@ -32,122 +33,47 @@ namespace ShipyardMod.ProcessHandlers
                     item.ConnectedCargo.Clear();
                     continue;
                 }
+                var gts = MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid);
 
-                var blocks = new List<IMySlimBlock>();
-                grid.GetBlocks(blocks, x => x.FatBlock != null);
+                var blocks = new List<IMyTerminalBlock>();
+                gts.GetBlocks(blocks);
 
                 //assume that all the tools are connected, so only check against the first one in the list
                 var cornerInventory = (IMyInventory)((MyEntity)item.Tools[0]).GetInventory();
 
                 //check new blocks on the grid
-                var nextLevelBlocks = new HashSet<IMyCubeBlock>();
-                foreach (IMySlimBlock slimBlock in blocks)
+                
+                var disconnectedInventories = new HashSet<IMyTerminalBlock>();
+
+                //remove blocks which are closed or no longer in the terminal system
+                foreach (var block in item.ConnectedCargo)
                 {
-                    IMyCubeBlock block = slimBlock.FatBlock;
-
-                    if (block.Closed)
-                        continue;
-
-                    var pistonBase = block as IMyPistonBase;
-                    if (pistonBase != null)
-                    {
-                        if (!pistonBase.IsAttached || pistonBase.Top == null)
-                            continue;
-
-                        var levelBlocks = new List<IMySlimBlock>();
-                        pistonBase.TopGrid.GetBlocks(levelBlocks, x => x.FatBlock != null);
-
-                        //I don't care enough to recurse through all connected grids. Maybe once grid groups are a thing
-                        foreach (IMySlimBlock levelBlock in levelBlocks)
-                            nextLevelBlocks.Add(levelBlock.FatBlock);
-                    }
-
-                    var connector = block as IMyShipConnector;
-                    if (connector != null)
-                    {
-                        if (!connector.IsConnected || connector.OtherConnector == null)
-                            continue;
-
-                        var levelBlocks = new List<IMySlimBlock>();
-                        connector.OtherConnector.CubeGrid.GetBlocks(levelBlocks, x => x.FatBlock != null);
-
-                        foreach (IMySlimBlock levelBlock in levelBlocks)
-                            nextLevelBlocks.Add(levelBlock.FatBlock);
-                    }
-
-                    var motorRotor = block as IMyMotorRotor;
-                    if (motorRotor != null)
-                    {
-                        if (!motorRotor.IsAttached || motorRotor.Stator == null)
-                            continue;
-
-                        var levelBlocks = new List<IMySlimBlock>();
-                        motorRotor.Stator.CubeGrid.GetBlocks(levelBlocks, x => x.FatBlock != null);
-
-                        foreach (IMySlimBlock levelBlock in levelBlocks)
-                            nextLevelBlocks.Add(levelBlock.FatBlock);
-                    }
-
-                    var motorBase = block as IMyMotorBase;
-                    if (motorBase != null)
-                    {
-                        if (!motorBase.IsAttached || motorBase.Rotor == null)
-                            continue;
-
-                        var levelBlocks = new List<IMySlimBlock>();
-                        motorBase.RotorGrid.GetBlocks(levelBlocks, x => x.FatBlock != null);
-
-                        foreach (IMySlimBlock levelBlock in levelBlocks)
-                            nextLevelBlocks.Add(levelBlock.FatBlock);
-                    }
+                    if (block.Closed || !blocks.Contains(block))
+                        disconnectedInventories.Add(block);
                 }
 
-                var disconnectedInventories = new HashSet<IMyCubeBlock>();
-                var newConnections = new HashSet<IMyCubeBlock>();
+                foreach (var dis in disconnectedInventories)
+                {
+                    item.ConnectedCargo.Remove(dis);
+                }
+
+                var newConnections = new HashSet<IMyTerminalBlock>();
                 Utilities.InvokeBlocking(() =>
                                          {
                                              //check our cached inventories for connected-ness
-                                             foreach (IMyCubeBlock cargo in item.ConnectedCargo)
+                                             foreach (IMyTerminalBlock cargo in item.ConnectedCargo)
                                              {
-                                                 if (cargo.Closed)
-                                                     continue;
                                                  if (cornerInventory == null)
                                                      return;
+
                                                  if (!cornerInventory.IsConnectedTo(((MyEntity)cargo).GetInventory()))
                                                      disconnectedInventories.Add(cargo);
                                              }
 
-                                             foreach (IMySlimBlock slimBlock in blocks)
+                                             foreach (var block in blocks)
                                              {
-                                                 if (slimBlock.FatBlock == null)
-                                                     continue;
-
-                                                 IMyCubeBlock block = slimBlock.FatBlock;
-
-                                                 //to avoid shipyard corners pulling from each other. Circles are no fun.
-                                                 if (block.BlockDefinition.SubtypeName.Contains("ShipyardCorner"))
-                                                     continue;
-
-                                                 //ignore reactors
-                                                 if (block is IMyReactor)
-                                                     continue;
-
-                                                 if (item.ConnectedCargo.Contains(block) || disconnectedInventories.Contains(block))
-                                                     continue;
-
-                                                 if (((MyEntity)block).HasInventory)
-                                                 {
-                                                     MyInventory inventory = ((MyEntity)block).GetInventory();
-                                                     if (cornerInventory == null)
-                                                         return;
-                                                     if (cornerInventory.IsConnectedTo(inventory))
-                                                         newConnections.Add(block);
-                                                 }
-                                             }
-
-                                             foreach (IMyCubeBlock block in nextLevelBlocks)
-                                             {
-                                                 if (item.ConnectedCargo.Contains(block) || disconnectedInventories.Contains(block))
+                                                 //avoid duplicate checks
+                                                 if (disconnectedInventories.Contains(block) || item.ConnectedCargo.Contains(block))
                                                      continue;
 
                                                  //to avoid shipyard corners pulling from each other. Circles are no fun.
@@ -159,23 +85,27 @@ namespace ShipyardMod.ProcessHandlers
                                                      continue;
 
                                                  //ignore oxygen generators and tanks
-                                                 if (block is IMyOxygenGenerator || block is IMyOxygenTank)
+                                                 if (block is IMyGasGenerator || block is IMyGasTank)
+                                                     continue;
+
+                                                 if (item.ConnectedCargo.Contains(block) || disconnectedInventories.Contains(block))
                                                      continue;
 
                                                  if (((MyEntity)block).HasInventory)
                                                  {
+                                                     MyInventory inventory = ((MyEntity)block).GetInventory();
                                                      if (cornerInventory == null)
                                                          return;
-                                                     MyInventory inventory = ((MyEntity)block).GetInventory();
                                                      if (cornerInventory.IsConnectedTo(inventory))
                                                          newConnections.Add(block);
                                                  }
                                              }
                                          });
-                foreach (IMyCubeBlock removeBlock in disconnectedInventories)
+
+                foreach (IMyTerminalBlock removeBlock in disconnectedInventories)
                     item.ConnectedCargo.Remove(removeBlock);
 
-                foreach (IMyCubeBlock newBlock in newConnections)
+                foreach (IMyTerminalBlock newBlock in newConnections)
                     item.ConnectedCargo.Add(newBlock);
             }
         }
