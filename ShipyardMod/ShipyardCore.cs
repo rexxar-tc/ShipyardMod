@@ -129,7 +129,7 @@ Happy engineering!
                 Logging.Instance.WriteLine("Debug turned off");
                 Debug = false;
             }
-            else if (messageLower.Equals("/shipard new"))
+            else if (messageLower.Equals("/shipyard new"))
             {
                 sendToOthers = false;
                 ShowLog();
