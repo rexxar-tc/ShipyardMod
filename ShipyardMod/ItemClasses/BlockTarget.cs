@@ -14,9 +14,8 @@ namespace ShipyardMod.ItemClasses
         {
             Block = block;
             if (CubeGrid.Physics == null && Projector != null)
-                CenterDist = Vector3D.DistanceSquared(block.GetPosition(), Projector.GetPosition());
-            else
-                CenterDist = Vector3D.DistanceSquared(block.GetPosition(), block.CubeGrid.Center());
+                ProjectorDist = Vector3D.DistanceSquared(block.GetPosition(), Projector.GetPosition());
+            CenterDist = Vector3D.DistanceSquared(block.GetPosition(), block.CubeGrid.Center());
 
             ToolDist = new Dictionary<long, double>();
             foreach (IMyCubeBlock tool in item.Tools)
@@ -57,6 +56,17 @@ namespace ShipyardMod.ItemClasses
         public IMySlimBlock Block { get; private set; }
         public float BuildTime { get; }
         public double CenterDist { get; }
+        private double? _projectorDist;
+
+        public double ProjectorDist
+        {
+            get
+            {
+                return _projectorDist ?? CenterDist;
+            }
+            set { _projectorDist = value; }
+        }
+
         public Dictionary<long, double> ToolDist { get; }
 
         public void UpdateAfterBuild()

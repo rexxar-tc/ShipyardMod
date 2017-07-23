@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Sandbox.Definitions;
+using Sandbox.Game;
 using Sandbox.ModAPI;
 using ShipyardMod.ItemClasses;
 using ShipyardMod.ProcessHandlers;
@@ -584,6 +585,10 @@ namespace ShipyardMod.Utility
                 {
                     Logging.Instance.WriteLine("Debug turned off");
                     ShipyardCore.Debug = false;
+                }
+                else if (command.Equals("/shipyard inventory"))
+                {
+                    Utilities.FixInventory();
                 }
             }
             /*

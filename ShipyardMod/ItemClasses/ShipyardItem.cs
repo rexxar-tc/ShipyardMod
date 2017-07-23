@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -82,7 +83,7 @@ namespace ShipyardMod.ItemClasses
                 ((MyCubeGrid)grid).OnGridSplit += OnGridSplit;
             }
 
-            YardGrids = ContainsGrids.Where(x => !x.MarkedForClose).ToList();
+            YardGrids = ContainsGrids.Where(x => !x.Closed && !x.MarkedForClose).ToList();
             ContainsGrids.Clear();
             IntersectsGrids.Clear();
             Utilities.Invoke(() =>
@@ -173,8 +174,8 @@ namespace ShipyardMod.ItemClasses
                                          {
                                              if (blockTarget == null)
                                                  continue;
-                                             //the value 8 here is a coincidence, not to do with the number of corners on a box
-                                             float powerReq = 30 + (float)blockTarget.ToolDist[tool.EntityId] / 8;
+                                             
+                                             float powerReq = 30 + (float)Math.Pow(blockTarget.ToolDist[tool.EntityId], 0.7) * 2;
                                              if (YardType == ShipyardType.Weld)
                                                  power += powerReq * Settings.WeldMultiplier;
                                              else if (YardType == ShipyardType.Grind)
@@ -215,16 +216,19 @@ namespace ShipyardMod.ItemClasses
         //value is just enough to assist with matching velocity to the shipyard, but not enough to prevent escape
             foreach (var grid in ContainsGrids)
             {
-                if (Vector3D.IsZero(grid.Physics.LinearVelocity - YardEntity.Physics.LinearVelocity))
+                if (grid.Physics?.IsStatic != false || YardEntity.Physics?.IsStatic != false || Vector3D.IsZero(grid.Physics.LinearVelocity - YardEntity.Physics.LinearVelocity))
                     continue;
 
-                grid.Physics.ApplyImpulse(grid.Physics.Mass * Vector3D.ClampToSphere((YardEntity.Physics.LinearVelocity - grid.Physics.LinearVelocity), 0.005), grid.Physics.CenterOfMassWorld);
+                grid.Physics.ApplyImpulse(grid.Physics.Mass * Vector3D.ClampToSphere((YardEntity.Physics.LinearVelocity - grid.Physics.LinearVelocity), 0.01), grid.Physics.CenterOfMassWorld);
             }
             
             foreach (var grid in YardGrids)
             {
+                if (grid.Physics?.IsStatic != false || YardEntity.Physics?.IsStatic != false)
+                    continue;
+
                 if (!Settings.AdvancedLocking)
-                    grid.Physics.ApplyImpulse(grid.Physics.Mass * Vector3D.ClampToSphere((YardEntity.Physics.LinearVelocity - grid.Physics.LinearVelocity), 0.005), grid.Physics.CenterOfMassWorld);
+                    grid.Physics.ApplyImpulse(grid.Physics.Mass * Vector3D.ClampToSphere((YardEntity.Physics.LinearVelocity - grid.Physics.LinearVelocity), 0.01), grid.Physics.CenterOfMassWorld);
                 else
                 {
                     double powerUse = MathUtility.MatchShipVelocity(grid, YardEntity, true);

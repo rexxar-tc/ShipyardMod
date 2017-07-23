@@ -7,6 +7,7 @@ using ShipyardMod.ItemClasses;
 using ShipyardMod.ProcessHandlers;
 using VRage;
 using VRage.Collections;
+using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRageMath;
@@ -248,6 +249,60 @@ namespace ShipyardMod.Utility
 
             result = players[0];
             return true;
+        }
+
+        public static void FixInventory()
+        {
+            var ents = new HashSet<IMyEntity>();
+            MyAPIGateway.Entities.GetEntities(ents);
+
+            foreach (var ent in ents)
+            {
+                var grid = ent as IMyCubeGrid;
+                if (grid == null)
+                    continue;
+
+                var blocks = new List<IMySlimBlock>();
+                grid.GetBlocks(blocks);
+
+                foreach (var slim in blocks)
+                {
+                    var block = slim.FatBlock;
+
+                    if (block == null)
+                        continue;
+
+                    if (!block.HasInventory)
+                        continue;
+
+                    int c = block.InventoryCount;
+                    for (int i = 0; i < c; i++)
+                    {
+                        var inv = block.GetInventory(i);
+                        var items = inv.GetItems();
+                        foreach(var item in items)
+                        {
+                            if (item.Amount < 1)
+                            {
+                                inv.RemoveItems(item.ItemId);
+                                continue;
+                            }
+                            double added = Math.Abs(Math.Ceiling((double)item.Amount) - (double)item.Amount);
+                            inv.AddItems((MyFixedPoint)added, (MyObjectBuilder_PhysicalObject)item.Content);
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void ShowMessage(object message)
+        {
+            ShowMessage(string.Empty, message);
+        }
+
+        public static void ShowMessage(object sender, object message)
+        {
+            Invoke(()=>MyAPIGateway.Utilities.ShowMessage(sender.ToString(), message.ToString()));
         }
     }
 }

@@ -201,5 +201,10 @@ namespace ShipyardMod.Utility
 
             return false;
         }
+
+        public static HashSet<T> ToHashSet<T>(IEnumerable<T> input)
+        {
+            return new HashSet<T>(input);
+        }
     }
 }

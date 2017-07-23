@@ -14,16 +14,16 @@ namespace ShipyardMod.Utility
     {
         private static readonly Vector3D[] Offsets =
         {
-            new Vector3D(0.8103569, 0.2971599, 0.7976569),
-            new Vector3D(0.81244801, -0.813483256, -0.312517739),
-            new Vector3D(-0.311901606, -0.81946053, 0.802108187)
+            new Vector3D(0.38058, -0.86942, 0.86942),
+            new Vector3D(-0.86942, 0.38058, 0.86942),
+            new Vector3D(-0.86942, -0.86942, -0.38058)
         };
 
         private static readonly Vector3D[] SmallOffsets =
         {
-            new Vector3D(-0.84227, 0.84227, 0.34794),
-            new Vector3D(0.34649, 0.84227, -0.84083),
-            new Vector3D(-0.84227, -0.34649, -0.84083),
+            new Vector3D(0.38058, -0.86942, 0.86942),
+            new Vector3D(-0.86942, 0.38058, 0.86942),
+            new Vector3D(-0.86942, -0.86942, -0.38058),
         };
 
         /// <summary>

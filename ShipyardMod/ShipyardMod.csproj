@@ -118,6 +118,7 @@
     <Compile Include="ProcessHandlers\ProcessLCDMenu.cs" />
     <Compile Include="ProcessHandlers\ProcessLocalYards.cs" />
     <Compile Include="Settings\ShipyardSettings.cs" />
+    <Compile Include="ShipyardCorner.cs" />
     <Compile Include="Utility\Communication.cs" />
     <Compile Include="ShipyardCore.cs" />
     <Compile Include="ItemClasses\LCDMenu.cs" />

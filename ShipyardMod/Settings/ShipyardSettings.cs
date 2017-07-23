@@ -6,6 +6,13 @@ using VRage.Serialization;
 
 namespace ShipyardMod.Settings
 {
+    public enum BuildPatternEnum : byte
+    {
+        FromProjector,
+        FromCenter,
+        FromCorners,
+    }
+
     public struct YardSettingsStruct
     {
         public YardSettingsStruct(long entityId)
@@ -16,6 +23,7 @@ namespace ShipyardMod.Settings
             WeldMultiplier = 0.1f;
             GrindMultiplier = 0.1f;
             AdvancedLocking = false;
+            BuildPattern = BuildPatternEnum.FromProjector;
         }
 
         public readonly long EntityId;
@@ -24,6 +32,7 @@ namespace ShipyardMod.Settings
         public float WeldMultiplier;
         public float GrindMultiplier;
         public bool AdvancedLocking;
+        public BuildPatternEnum BuildPattern;
     }
 
     [XmlInclude(typeof(YardSettingsStruct))]
