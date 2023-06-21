@@ -86,6 +86,19 @@ namespace ShipyardMod
             MyAPIGateway.TerminalControls.AddControl<IMyCollector>(guideSwitch);
             Controls.Add(guideSwitch);
 
+            IMyTerminalControlOnOffSwitch invSwitch = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlOnOffSwitch, IMyCollector>("Shipyard_InventorySwitch");
+            invSwitch.Title = MyStringId.GetOrCompute("Fill Inventory");
+            invSwitch.Tooltip = MyStringId.GetOrCompute("Toggles filling of projected inventory blocks.");
+            invSwitch.OnText = MyStringId.GetOrCompute("On");
+            invSwitch.OffText = MyStringId.GetOrCompute("Off");
+            invSwitch.Visible = b => b.BlockDefinition.SubtypeId.Contains("ShipyardCorner");
+            invSwitch.Enabled = b => b.BlockDefinition.SubtypeId.Contains("ShipyardCorner") && GetYard(b) != null;
+            invSwitch.SupportsMultipleBlocks = true;
+            invSwitch.Getter = GetFillEnabled;
+            invSwitch.Setter = SetFillEnabled;
+            MyAPIGateway.TerminalControls.AddControl<IMyCollector>(invSwitch);
+            Controls.Add(invSwitch);
+
             var lockSwitch = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlOnOffSwitch, IMyCollector>("Shipyard_LockSwitch");
             lockSwitch.Title = MyStringId.GetOrCompute("Advanced Locking");
             lockSwitch.Tooltip = MyStringId.GetOrCompute("Toggles locking grids in the shipyard when grinding or welding while moving.");
@@ -120,6 +133,17 @@ namespace ShipyardMod
             weldButton.Action = b => Communication.SendYardCommand(b.CubeGrid.EntityId, ShipyardType.Weld);
             MyAPIGateway.TerminalControls.AddControl<IMyCollector>(weldButton);
             Controls.Add(weldButton);
+
+            IMyTerminalControlButton scanButton = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlButton, IMyCollector>("Shipyard_ScanButton");
+
+            scanButton.Title = MyStringId.GetOrCompute("Scan");
+            scanButton.Tooltip = MyStringId.GetOrCompute("Begins welding ships in the yard.");
+            scanButton.Enabled = b => b.BlockDefinition.SubtypeId.Contains("ShipyardCorner") && GetYard(b)?.YardType == ShipyardType.Disabled;
+            scanButton.Visible = b => b.BlockDefinition.SubtypeId.Contains("ShipyardCorner");
+            scanButton.SupportsMultipleBlocks = true;
+            scanButton.Action = b => Communication.SendYardCommand(b.CubeGrid.EntityId, ShipyardType.Scanning);
+            MyAPIGateway.TerminalControls.AddControl<IMyCollector>(scanButton);
+            Controls.Add(scanButton);
 
             stopButton.Title = MyStringId.GetOrCompute("Stop");
             stopButton.Tooltip = MyStringId.GetOrCompute("Stops the shipyard.");
@@ -233,7 +257,7 @@ namespace ShipyardMod
                 float maxpower = _maxpower;
                 if (GetYard(b) != null)
                 {
-                    maxpower *= Math.Max(b.GetValueFloat("Shipyard_GrindSpeed"), b.GetValueFloat("Shipyard_WeldSpeed"));
+                    maxpower *= Math.Max(GetGrindSpeed(b), GetWeldSpeed(b));
                     maxpower *= GetBeamCount(b);
                 }
                 var sb = new StringBuilder();
@@ -321,6 +345,30 @@ namespace ShipyardMod
             
             YardSettingsStruct settings = ShipyardSettings.Instance.GetYardSettings(b.CubeGrid.EntityId);
             settings.AdvancedLocking = value;
+
+            ShipyardSettings.Instance.SetYardSettings(b.CubeGrid.EntityId, settings);
+
+            Communication.SendShipyardSettings(b.CubeGrid.EntityId, settings);
+        }
+
+        private bool GetFillEnabled(IMyCubeBlock b)
+        {
+            if (GetYard(b) == null)
+                return false;
+
+            return ShipyardSettings.Instance.GetYardSettings(b.CubeGrid.EntityId).FillInventory;
+        }
+
+        private void SetFillEnabled(IMyCubeBlock b, bool value)
+        {
+            if (GetYard(b) == null)
+                return;
+
+            if (value == GetFillEnabled(b))
+                return;
+
+            YardSettingsStruct settings = ShipyardSettings.Instance.GetYardSettings(b.CubeGrid.EntityId);
+            settings.FillInventory = value;
 
             ShipyardSettings.Instance.SetYardSettings(b.CubeGrid.EntityId, settings);
 
@@ -436,12 +484,7 @@ namespace ShipyardMod
 
         public override void UpdateBeforeSimulation10()
         {
-            ((IMyTerminalBlock)Container.Entity).RefreshCustomInfo();
-        }
-
-        public override MyObjectBuilder_EntityBase GetObjectBuilder(bool copy = false)
-        {
-            return Entity.GetObjectBuilder(copy);
+            ((IMyTerminalBlock)Entity).RefreshCustomInfo();
         }
 
         private static void FillPatternCombo(List<MyTerminalControlComboBoxItem> list)

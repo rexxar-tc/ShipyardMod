@@ -17,25 +17,19 @@ namespace ShipyardMod.Utility
     {
         public static void Stop(this IMyEntity entity)
         {
-            if (entity?.Physics == null || entity.Closed)
+            if (entity.Physics == null || entity.Closed)
                 return;
-
-            Utilities.Invoke(() =>
-                             {
-                                 if (entity.Physics == null || entity.Closed)
-                                     return;
-                                 entity.Physics.SetSpeeds(Vector3.Zero, Vector3.Zero);
-                                 /*
-                                 entity.Physics.Clear();
-                                 if (!Vector3.IsZero(entity.Physics.LinearAcceleration) || !Vector3.IsZero(entity.Physics.AngularAcceleration))
-                                 {
-                                     entity.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE,
-                                                             Vector3.Negate(entity.Physics.LinearAcceleration) * entity.Physics.Mass,
-                                                             entity.Center(),
-                                                             Vector3.Negate(entity.Physics.AngularAcceleration) * entity.Physics.Mass);
-                                 }
-                                 */
-                             });
+            entity.Physics.SetSpeeds(Vector3.Zero, Vector3.Zero);
+            /*
+            entity.Physics.Clear();
+            if (!Vector3.IsZero(entity.Physics.LinearAcceleration) || !Vector3.IsZero(entity.Physics.AngularAcceleration))
+            {
+                entity.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_IMPULSE_AND_WORLD_ANGULAR_IMPULSE,
+                                        Vector3.Negate(entity.Physics.LinearAcceleration) * entity.Physics.Mass,
+                                        entity.Center(),
+                                        Vector3.Negate(entity.Physics.AngularAcceleration) * entity.Physics.Mass);
+            }
+            */
         }
 
         public static Vector3D Center(this IMyEntity ent)
@@ -192,7 +186,7 @@ namespace ShipyardMod.Utility
                 var gridWorldMatrix = block.CubeGrid.WorldMatrix;
                 foreach (var map in voxels)
                 {
-                    if (((IMyVoxelBase)map).IsAnyAabbCornerInside(gridWorldMatrix, localAAABB))
+                    if (((MyVoxelBase)map).IsAnyAabbCornerInside(ref gridWorldMatrix, localAAABB))
                     {
                         return true;
                     }

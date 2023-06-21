@@ -83,7 +83,7 @@ namespace ShipyardMod.ProcessHandlers
                     //workaround to not blind people with digi's helmet mod
                     if (grid.Physics == null && grid.Projector() == null)
                         continue;
-
+                    
                     if (grid.Closed || grid.MarkedForClose)
                     {
                         removeGrids.Add(grid);
@@ -103,11 +103,19 @@ namespace ShipyardMod.ProcessHandlers
                     {
                         item.ContainsGrids.Add(grid);
                         item.IntersectsGrids.Remove(grid);
+                        lock (ShipyardCore.TrackingContains)
+                            ShipyardCore.TrackingContains.Add(grid, item);
+                        lock (ShipyardCore.TrackingIntersect)
+                            ShipyardCore.TrackingIntersect.Remove(grid);
                     }
                     else if (result == ContainmentType.Intersects)
                     {
                         item.IntersectsGrids.Add(grid);
                         item.ContainsGrids.Remove(grid);
+                        lock (ShipyardCore.TrackingContains)
+                            ShipyardCore.TrackingIntersect.Add(grid, item);
+                        lock (ShipyardCore.TrackingIntersect)
+                            ShipyardCore.TrackingContains.Remove(grid);
                     }
                     else
                     {
@@ -125,9 +133,15 @@ namespace ShipyardMod.ProcessHandlers
 
                 foreach (IMyCubeGrid removeGrid in removeGrids)
                 {
+                    if (removeGrid == null)
+                        continue;
                     ShipyardCore.BoxDict.Remove(removeGrid.EntityId);
                     item.ContainsGrids.Remove(removeGrid);
+                    lock (ShipyardCore.TrackingContains)
+                        ShipyardCore.TrackingContains.Remove(removeGrid);
                     item.IntersectsGrids.Remove(removeGrid);
+                    lock (ShipyardCore.TrackingIntersect)
+                        ShipyardCore.TrackingIntersect.Remove(removeGrid);
                 }
             }
 
@@ -135,14 +149,27 @@ namespace ShipyardMod.ProcessHandlers
             {
                 foreach (IMyCubeGrid grid in removeItem.ContainsGrids)
                 {
+                    if (grid == null)
+                        continue;
                     ShipyardCore.BoxDict.Remove(grid.EntityId);
+                    lock (ShipyardCore.TrackingContains)
+                        ShipyardCore.TrackingContains.Remove(grid);
+                    lock (ShipyardCore.TrackingIntersect)
+                        ShipyardCore.TrackingIntersect.Remove(grid);
                 }
                 foreach (IMyCubeGrid grid in removeItem.IntersectsGrids)
                 {
+                    if (grid == null)
+                        continue;
                     ShipyardCore.BoxDict.Remove(grid.EntityId);
+                    lock (ShipyardCore.TrackingContains)
+                        ShipyardCore.TrackingContains.Remove(grid);
+                    lock (ShipyardCore.TrackingIntersect)
+                        ShipyardCore.TrackingIntersect.Remove(grid);
                 }
 
                 LocalYards.Remove(removeItem);
+                ShipyardCore.TrackingYards.Remove(removeItem);
             }
         }
 

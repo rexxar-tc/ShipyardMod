@@ -15,6 +15,7 @@ using VRage.Collections;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
 using VRage.Utils;
 using VRageMath;
 
@@ -42,20 +43,29 @@ namespace ShipyardMod
     [MySessionComponentDescriptor(MyUpdateOrder.BeforeSimulation)]
     public class ShipyardCore : MySessionComponentBase
     {
-        private const string Version = "v3.0";
+        private const string Version = "v3.24";
+        private const string LastUpdate = "Oct22";
 
         //TODO
         public static volatile bool Debug = false;
 
         //private readonly List<Task> _tasks = new List<Task>();
         private static Task _task;
-        public static readonly MyConcurrentDictionary<long, BoxItem> BoxDict = new MyConcurrentDictionary<long, BoxItem>();
+        public static readonly Dictionary<long, BoxItem> BoxDict = new Dictionary<long, BoxItem>();
+        public static readonly CachingDictionary<IMyCubeGrid, ShipyardItem> TrackingIntersect = new CachingDictionary<IMyCubeGrid, ShipyardItem>();
+        public static readonly CachingDictionary<IMyCubeGrid, ShipyardItem> TrackingContains = new CachingDictionary<IMyCubeGrid, ShipyardItem>();
+        public static readonly CachingHashSet<ShipyardItem> TrackingYards = new CachingHashSet<ShipyardItem>();
 
         private bool _initialized;
+        private bool _notified;
 
         private DateTime _lastMessageTime = DateTime.Now;
         private ProcessHandlerBase[] _processHandlers;
         private int _updateCount;
+        private IMyHudNotification _warningNotification;
+        double _warningTime;
+
+        public static ProcessManager ProcessManager;
 
         private void Initialize()
         {
@@ -70,23 +80,82 @@ namespace ShipyardMod
                                    new ProcessConveyorCache(),
                                };
 
+            ProcessManager = new ProcessManager(_processHandlers.Length, 10);
             Logging.Instance.WriteLine($"Shipyard Script Initialized: {Version}");
-
+        }
+        
+        private void NotifyUpdate()
+        {
             if (!MyAPIGateway.Utilities.FileExistsInLocalStorage("notify.sav", typeof(ShipyardCore)))
             {
                 var w = MyAPIGateway.Utilities.WriteFileInLocalStorage("notify.sav", typeof(ShipyardCore));
-                w.Write("newJul");
+                w.Write(LastUpdate);
                 w.Flush();
                 w.Close();
 
                 MyAPIGateway.Utilities.ShowNotification("Shipyards has updated. Enter '/shipyard new' to view the changelog", 5000, MyFontEnum.Green);
             }
+            else
+            {
+                var r = MyAPIGateway.Utilities.ReadFileInLocalStorage("notify.sav", typeof(ShipyardCore));
+                var con = r.ReadToEnd();
+                r.Close();
+                if (!con.Contains(LastUpdate))
+                {
+                    var w = MyAPIGateway.Utilities.WriteFileInLocalStorage("notify.sav", typeof(ShipyardCore));
+                    w.Write(LastUpdate);
+                    w.Flush();
+                    w.Close();
+
+                    MyAPIGateway.Utilities.ShowNotification($"Shipyards has updated to {Version}. Enter '/shipyard new' to view the changelog", 5000, MyFontEnum.Green);
+                }
+            }
+        }
+
+        private void NotifyError()
+        {
+            if (MyAPIGateway.Session?.Player?.PromoteLevel >= MyPromoteLevel.Moderator)
+            {
+                if (_warningNotification == null)
+                {
+                    _warningNotification = MyAPIGateway.Utilities.CreateNotification("ShipyardMod encountered an error! Please report on the workshop with '/shipyard workshop' and include the log!", 6000, MyFontEnum.Red);
+                    _warningNotification.Show();
+                    _warningTime = MyAPIGateway.Session.ElapsedPlayTime.TotalMilliseconds;
+                }
+
+                if (MyAPIGateway.Session.ElapsedPlayTime.TotalMilliseconds - _warningTime > 6000)
+                {
+                    _warningNotification.ResetAliveTime();
+                    _warningNotification.Show();
+                }
+            }
         }
 
         private void ShowLog()
         {
-            MyAPIGateway.Utilities.ShowMissionScreen("Shipyard Update", "", "July 2017",
+            MyAPIGateway.Utilities.ShowMissionScreen("Shipyard Update", Version, "October 22 2017",
     @"Greetings engineers!
+
+UPDATE OCTOBER 22:
+
+Fixed an exception that was spamming logs every tick. Added ingame warning for mod errors.
+
+UPDATE AUGUST 19:
+
+This update should hopefully fix the issues people have been reporting with conveyors.
+
+I've done a massive amount of optimization and parallelization. PLEASE leave a comment on the workshop page if it crashes or doesn't work as expected!
+
+You can send '/shipyard workshop' in chat, and it will open the workshop page in the steam overlay!
+
+More optimization and parallelization is coming Soon(tm)!
+
+UPDATE JULY 25:
+
+Shipyards now have an option to fill inventory of projections. Since projections keep track of what inventory is in the blueprint, the shipyard can pull cargo from its own grid and replace inventory in your projection, so it's like the day you blueprinted it!
+Do note that this option is affected by normal welding efficiency, so you'll lose some components in the process!
+
+UPDATE JULY 22:
 
 The shipyard mod has received a major update, fixing many bugs and bringing some exciting new features!
 
@@ -121,8 +190,11 @@ Happy engineering!
 
             if (messageLower.Equals("/shipyard debug on"))
             {
-                Logging.Instance.WriteLine("Debug turned on");
-                Debug = true;
+                lock (_processHandlers)
+                {
+                    Logging.Instance.WriteLine("Debug turned on");
+                    Debug = true;
+                }
             }
             else if (messageLower.Equals("/shipyard debug off"))
             {
@@ -141,6 +213,10 @@ Happy engineering!
                 sendToOthers = false;
                 return;
             }
+            else if (messageLower.Equals("/shipyard crash"))
+            {
+                _runAction = ()=> { throw new Exception("TEST"); };
+            }
             _lastMessageTime = DateTime.Now;
 
             sendToOthers = false;
@@ -158,93 +234,153 @@ Happy engineering!
 
         private void CalculateBoxesContaining()
         {
-            foreach (ShipyardItem item in ProcessLocalYards.LocalYards)
+            lock (ShipyardCore.TrackingContains)
+                foreach (var e in TrackingContains)
             {
-                foreach (IMyCubeGrid grid in item.ContainsGrids)
+                var yard = e.Value;
+                var grid = e.Key;
+                if (yard.YardType != ShipyardType.Disabled || grid.Closed || !ShipyardSettings.Instance.GetYardSettings(yard.EntityId).GuideEnabled)
                 {
-                    if (item.YardType != ShipyardType.Disabled || grid.Closed || !ShipyardSettings.Instance.GetYardSettings(item.EntityId).GuideEnabled)
-                    {
-                        BoxDict.Remove(grid.EntityId);
+                    BoxDict.Remove(grid.EntityId);
+                    continue;
+                }
+
+                BoxItem item;
+                uint color;
+
+                BoxDict.TryGetValue(grid.EntityId, out item);
+
+                if (grid.Physics != null)
+                    color = Color.Green.PackedValue;
+                else
+                {
+                    var proj = grid.Projector();
+
+                    if (proj == null) //ghost grid like Digi's helmet
                         continue;
-                    }
-                    //if (BoxDict.ContainsKey(grid.EntityId) && Vector3D.DistanceSquared(BoxDict[grid.EntityId].LastPos, grid.GetPosition()) < 0.01)
-                    //    continue;
 
-                    uint color;
+                    if (proj.RemainingBlocks == 0) //projection is complete
+                        continue;
 
-                    if (grid.Physics != null)
-                        color = Color.Green.PackedValue;
-                    else
-                    {
-                        var proj = grid.Projector();
+                    color = Color.Cyan.PackedValue;
+                }
 
-                        if (proj == null) //ghost grid like Digi's helmet
-                            continue;
-
-                        if (proj.RemainingBlocks == 0) //projection is complete
-                            continue;
-
-                        color = Color.Cyan.PackedValue;
-                    }
-
+                if (item == null)
+                {
                     BoxDict[grid.EntityId] = new BoxItem
                                              {
                                                  Lines = MathUtility.CalculateObbLines(MathUtility.CreateOrientedBoundingBox(grid)),
                                                  GridId = grid.EntityId,
                                                  //PackedColor = grid.Physics == null ? Color.Cyan.PackedValue : Color.Green.PackedValue,
                                                  PackedColor = color,
-                                                 LastPos = grid.GetPosition()
+                                                 LastMatrix = grid.WorldMatrix
                                              };
+                }
+                else
+                {
+                    var m = grid.WorldMatrix;
+                    if (item.LastMatrix.EqualsFast(ref m))
+                        return;
+
+                    item.LastMatrix = m;
+                    item.PackedColor = color;
+                    item.Lines = MathUtility.CalculateObbLines(MathUtility.CreateOrientedBoundingBox(grid));
                 }
             }
         }
 
         private void CalculateBoxesIntersecting()
         {
-            foreach (var item in ProcessLocalYards.LocalYards)
+            foreach (var e in TrackingIntersect)
             {
-                foreach (IMyCubeGrid grid in item.IntersectsGrids)
+                var yard = e.Value;
+                var grid = e.Key;
+                if (yard.YardType != ShipyardType.Disabled || grid.Closed || !ShipyardSettings.Instance.GetYardSettings(yard.EntityId).GuideEnabled)
                 {
-                    if (item.YardType != ShipyardType.Disabled || grid.Closed || !ShipyardSettings.Instance.GetYardSettings(item.EntityId).GuideEnabled)
-                    {
-                        BoxDict.Remove(grid.EntityId);
+                    BoxDict.Remove(grid.EntityId);
+                    continue;
+                }
+
+                BoxItem item;
+                uint color;
+
+                BoxDict.TryGetValue(grid.EntityId, out item);
+
+                if (grid.Physics != null)
+                    color = Color.Yellow.PackedValue;
+                else
+                {
+                    var proj = grid.Projector();
+
+                    if (proj == null) //ghost grid like Digi's helmet
                         continue;
-                    }
-                    //if (BoxDict.ContainsKey(grid.EntityId) && Vector3D.DistanceSquared(BoxDict[grid.EntityId].LastPos, grid.GetPosition()) < 0.01)
-                    //    continue;
 
-                    uint color;
+                    if (proj.RemainingBlocks == 0) //projection is complete
+                        continue;
 
-                    if (grid.Physics != null)
-                        color = Color.Yellow.PackedValue;
-                    else
-                    {
-                        var proj = grid.Projector();
+                    color = Color.CornflowerBlue.PackedValue;
+                }
 
-                        if (proj == null) //ghost grid like Digi's helmet
-                            continue;
-
-                        if (proj.RemainingBlocks == 0) //projection is complete
-                            continue;
-
-                        color = Color.CornflowerBlue.PackedValue;
-                    }
-
+                if (item == null)
+                {
                     BoxDict[grid.EntityId] = new BoxItem
                                              {
                                                  Lines = MathUtility.CalculateObbLines(MathUtility.CreateOrientedBoundingBox(grid)),
                                                  GridId = grid.EntityId,
                                                  //PackedColor = grid.Physics == null ? Color.CornflowerBlue.PackedValue : Color.Yellow.PackedValue,
                                                  PackedColor = color,
-                                                 LastPos = grid.GetPosition()
+                                                 LastMatrix = grid.WorldMatrix
                                              };
                 }
+                else
+                {
+                    var m = grid.WorldMatrix;
+                    if (item.LastMatrix.EqualsFast(ref m))
+                        return;
+
+                    item.LastMatrix = m;
+                    item.PackedColor = color;
+                    item.Lines = MathUtility.CalculateObbLines(MathUtility.CreateOrientedBoundingBox(grid));
+                }
             }
+        }
+        
+        private void UpdateBoxes()
+        {
+            try
+            {
+                lock(TrackingContains)
+                    TrackingContains.ApplyChanges();
+            }
+            catch (ArgumentNullException)
+            {
+                Logging.Instance.WriteLine("ArgumentNullException at TrackingContains. Attempting to continue...");
+                lock (TrackingContains)
+                    TrackingContains.Clear();
+            }
+
+            try
+            {
+                lock(TrackingIntersect)
+                    TrackingIntersect.ApplyChanges();
+            }
+            catch (ArgumentNullException)
+            {
+                Logging.Instance.WriteLine("ArgumentNullException at TrackingIntersect. Attempting to continue...");
+                lock (ShipyardCore.TrackingContains)
+                    TrackingIntersect.Clear();
+            }
+
+            TrackingYards.ApplyChanges();
+
+            CalculateBoxesContaining();
+            CalculateBoxesIntersecting();
+            //MyAPIGateway.Parallel.Do(CalculateBoxesIntersecting, CalculateBoxesContaining);
         }
 
         private void CalculateLines()
         {
-            foreach (var e in Communication.LineDict)
+            foreach (var e in Communication.LineDict.ToArray())
             {
                 foreach (var line in e.Value)
                 {
@@ -282,15 +418,9 @@ Happy engineering!
 
             try
             {
-                //these tasks are too simple to use Parallel.ForEach or similar in the body, but
-                //can all safely be run simultaneously, so do that.
-                var t1 = MyAPIGateway.Parallel.Start(CalculateBoxesContaining);
-                var t2 = MyAPIGateway.Parallel.Start(CalculateBoxesIntersecting);
-                var t3 = MyAPIGateway.Parallel.Start(CalculateLines);
-                //wait for all three to finish
-                t1.Wait();
-                t2.Wait();
-                t3.Wait();
+                UpdateBoxes();
+                CalculateLines();
+                
                 DrawLines();
                 FadeLines();
                 DrawScanning();
@@ -299,15 +429,31 @@ Happy engineering!
             {
                 Logging.Instance.WriteLine($"Draw(): {ex}");
                 MyLog.Default.WriteLineAndConsole("##SHIPYARD MOD: ENCOUNTERED ERROR DURING DRAW UPDATE. CHECK MOD LOG");
+                NotifyError();
                 if (Debug)
                     throw;
             }
         }
 
+        private Action _runAction;
+
         public override void UpdateBeforeSimulation()
         {
+            Profiler.ProfilingBlockBase block = null;
+            if (_initialized)
+                block = Profiler.Start("0.ShipyardMod.ShipyardCore", nameof(UpdateBeforeSimulation));
+
             try
             {
+                try
+                {
+                    _runAction?.Invoke();
+                }
+                finally
+                {
+                    _runAction = null;
+                }
+
                 if (MyAPIGateway.Session == null)
                     return;
 
@@ -316,34 +462,32 @@ Happy engineering!
                     _initialized = true;
                     Initialize();
                 }
-                
-                RunProcessHandlers();
 
-                foreach (var item in ProcessShipyardDetection.ShipyardsList)
+                if (!_notified && MyAPIGateway.Session.Player?.Character != null)
                 {
-                    if (item.StaticYard)
-                    {
-                        foreach (IMyCubeGrid yardGrid in item.YardGrids)
-                            yardGrid.Stop();
-                    }
-                    else
-                    {
-                        item.UpdatePosition();
-                        item.NudgeGrids();
-                    }
+                    _notified = true;
+                    NotifyUpdate();
                 }
 
-                foreach (var item in ProcessLocalYards.LocalYards)
-                {
-                    if (!item.StaticYard)
-                        item.UpdatePosition();
-                }
+                _updateCount++;
 
-                if (_updateCount++ % 10 != 0)
+                using (Profiler.Start("0.ShipyardMod.ShipyardCore", nameof(UpdateBeforeSimulation), nameof(RunProcessHandlers)))
+                    RunProcessHandlers();
+
+                using (Profiler.Start("0.ShipyardMod.ShipyardCore", nameof(UpdateBeforeSimulation), nameof(ProcessManager)))
+                    ProcessManager.Update(_updateCount);
+
+                MyAPIGateway.Parallel.Start(UpdateYards);
+
+                if (_updateCount % 10 != 0)
                     return;
 
-                CheckAndDamagePlayer();
-                Utilities.ProcessActionQueue();
+
+                using (Profiler.Start("0.ShipyardMod.ShipyardCore", nameof(UpdateBeforeSimulation), nameof(CheckAndDamagePlayer)))
+                    CheckAndDamagePlayer();
+
+                using (Profiler.Start("0.ShipyardMod.ShipyardCore", nameof(UpdateBeforeSimulation), nameof(Utilities.ProcessActionQueue)))
+                    Utilities.ProcessActionQueue();
 
                 if (Debug)
                     Profiler.Save();
@@ -352,8 +496,36 @@ Happy engineering!
             {
                 Logging.Instance.WriteLine($"UpdateBeforeSimulation(): {ex}");
                 MyLog.Default.WriteLineAndConsole("##SHIPYARD MOD: ENCOUNTERED ERROR DURING MOD UPDATE. CHECK MOD LOG");
+                NotifyError();
                 if (Debug)
                     throw;
+            }
+            finally
+            {
+                block?.End();
+            }
+        }
+
+        private void UpdateYards()
+        {
+            foreach (var item in ProcessShipyardDetection.ShipyardsList)
+            {
+                if (item.StaticYard)
+                {
+                    foreach (IMyCubeGrid yardGrid in item.YardGrids)
+                        yardGrid.Stop();
+                }
+                else
+                {
+                    item.UpdatePosition();
+                    item.NudgeGrids();
+                }
+            }
+
+            foreach (var item in ProcessLocalYards.LocalYards)
+            {
+                if (!item.StaticYard)
+                    item.UpdatePosition();
             }
         }
 
@@ -401,7 +573,7 @@ Happy engineering!
             }
 
             //run all process handlers in serial so we don't have to design for concurrency
-            _task = MyAPIGateway.Parallel.Start(() =>
+            _task = MyAPIGateway.Parallel.StartBackground(() =>
                                                 {
                                                     string handlerName = "";
                                                     try
@@ -445,7 +617,7 @@ Happy engineering!
 
         private void DrawLines()
         {
-            foreach (KeyValuePair<long, List<LineItem>> kvp in Communication.LineDict)
+            foreach (KeyValuePair<long, List<LineItem>> kvp in Communication.LineDict.ToArray())
             {
                 foreach (LineItem line in kvp.Value)
                 {
@@ -474,7 +646,7 @@ Happy engineering!
                 }
             }
 
-            foreach (ShipyardItem item in ProcessLocalYards.LocalYards)
+            foreach (var item in TrackingYards)
             {
                 Vector4 color = Color.White;
                 if (item.YardType == ShipyardType.Disabled || item.YardType == ShipyardType.Invalid)
@@ -544,6 +716,10 @@ Happy engineering!
 
                 foreach (ShipyardItem yard in ProcessShipyardDetection.ShipyardsList.ToArray())
                     yard.Disable(false);
+
+                ProcessShipyardDetection.ShipyardsList.Clear();
+                ProcessManager = null;
+                BoxDict.Clear();
             }
             catch
             {

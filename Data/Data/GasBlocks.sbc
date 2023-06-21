@@ -1,0 +1,181 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<CubeBlocks>
+		<Definition xsi:type="MyObjectBuilder_GasTankDefinition">
+			<Id>
+				<TypeId>OxygenTank</TypeId>
+				<SubtypeId>ArgonTank</SubtypeId>
+			</Id>
+			<DisplayName>Argon Tank</DisplayName>
+			<Icon>Textures\GUI\Icons\Cubes\OxygenTank.dds</Icon>
+			<CubeSize>Large</CubeSize>
+			<BlockTopology>TriangleMesh</BlockTopology>
+			<Size x="1" y="2" z="1" />
+			<ModelOffset x="0" y="0" z="0" />
+			<Model>Models\Cubes\Large\OxygenStorage.mwm</Model>
+			<Components>
+				<Component Subtype="SteelPlate" Count="60" />
+				<Component Subtype="LargeTube" Count="40" />
+				<Component Subtype="SmallTube" Count="60" />
+				<Component Subtype="Computer" Count="8" />
+				<Component Subtype="Construction" Count="40" />
+				<Component Subtype="SteelPlate" Count="20" />
+			</Components>
+			<CriticalComponent Subtype="Computer" Index="0" />
+			<MountPoints>
+				<MountPoint Side="Top" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.9" />
+				<MountPoint Side="Bottom" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.9" Default="true" />
+				<MountPoint Side="Front" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.3" />
+				<MountPoint Side="Front" StartX="0.1" StartY="0.9" EndX="0.9" EndY="1.1" />
+				<MountPoint Side="Front" StartX="0.1" StartY="1.7" EndX="0.9" EndY="1.9" />
+				<MountPoint Side="Back" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.3" />
+				<MountPoint Side="Back" StartX="0.1" StartY="0.9" EndX="0.9" EndY="1.1" />
+				<MountPoint Side="Back" StartX="0.1" StartY="1.7" EndX="0.9" EndY="1.9" />
+				<MountPoint Side="Left" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.3" />
+				<MountPoint Side="Left" StartX="0.1" StartY="0.9" EndX="0.9" EndY="1.1" />
+				<MountPoint Side="Left" StartX="0.1" StartY="1.7" EndX="0.9" EndY="1.9" />
+				<MountPoint Side="Right" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.3" />
+				<MountPoint Side="Right" StartX="0.1" StartY="0.9" EndX="0.9" EndY="1.1" />
+				<MountPoint Side="Right" StartX="0.1" StartY="1.7" EndX="0.9" EndY="1.9" />
+			</MountPoints>
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Large\OxygenStorageConstruction_1.mwm" />
+				<Model BuildPercentUpperBound="0.66" File="Models\Cubes\Large\OxygenStorageConstruction_2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\OxygenStorageConstruction_3.mwm" />
+			</BuildProgressModels>
+			<BlockPairName>ArgonTank</BlockPairName>
+			<MirroringY>Z</MirroringY>
+			<MirroringZ>Y</MirroringZ>
+			<EdgeType>Light</EdgeType>
+			<ResourceSourceGroup>Reactors</ResourceSourceGroup>
+			<ResourceSinkGroup>Factory</ResourceSinkGroup>
+			<OperationalPowerConsumption>0.001</OperationalPowerConsumption>
+			<StandbyPowerConsumption>0.000001</StandbyPowerConsumption>
+			<Capacity>100000</Capacity>
+			<InventoryMaxVolume>4</InventoryMaxVolume>
+			<InventorySize>
+				<X>2</X>
+				<Y>2</Y>
+				<Z>2</Z>
+			</InventorySize>
+			<StoredGasId>
+				<TypeId>GasProperties</TypeId>
+				<SubtypeId>Argon</SubtypeId>
+			</StoredGasId>
+			<BlueprintClasses>
+				<Class>OxygenBottles</Class>
+			</BlueprintClasses>
+			<BuildTimeSeconds>45</BuildTimeSeconds>
+			<DamageEffectId>213</DamageEffectId>
+			<DamagedSound>ParticleWeapExpl</DamagedSound>
+			<DestroyEffect>Explosion_Missile</DestroyEffect>
+			<DestroySound>WepSmallMissileExpl</DestroySound>
+			<EmissiveColorPreset>Extended</EmissiveColorPreset>
+		</Definition>
+		<Definition xsi:type="MyObjectBuilder_OxygenGeneratorDefinition">
+			<Id>
+				<TypeId>OxygenGenerator</TypeId>
+				<SubtypeId/>
+			</Id>
+			<DisplayName>DisplayName_Block_OxygenGenerator</DisplayName>
+			<Icon>Textures\GUI\Icons\Cubes\OxygenGenerator.dds</Icon>
+			<CubeSize>Large</CubeSize>
+			<BlockTopology>TriangleMesh</BlockTopology>
+			<Size x="1" y="2" z="1" />
+			<ModelOffset x="0" y="0" z="0" />
+			<Model>Models\Cubes\Large\OxygenGenerator.mwm</Model>
+			<Components>
+				<Component Subtype="SteelPlate" Count="110" />
+				<Component Subtype="Construction" Count="5" />
+				<Component Subtype="LargeTube" Count="2" />
+				<Component Subtype="Motor" Count="4" />
+				<Component Subtype="Computer" Count="5" />
+				<Component Subtype="SteelPlate" Count="10" />
+			</Components>
+			<CriticalComponent Subtype="Computer" Index="0" />
+			<MountPoints>
+				<MountPoint Side="Back" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.9" />
+				<MountPoint Side="Front" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.9" />
+				<MountPoint Side="Bottom" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.9" Default="true" />
+				<MountPoint Side="Top" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.9" />
+				<MountPoint Side="Left" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.9" />
+				<MountPoint Side="Right" StartX="0.1" StartY="0.1" EndX="0.9" EndY="0.9" />
+			</MountPoints>
+			<IsAirTight>true</IsAirTight>
+			<MirroringY>X</MirroringY>
+			<BuildProgressModels>
+				<Model BuildPercentUpperBound="0.33" File="Models\Cubes\Large\OxygenGeneratorConstruction_1.mwm" />
+				<Model BuildPercentUpperBound="0.66" File="Models\Cubes\Large\OxygenGeneratorConstruction_2.mwm" />
+				<Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\OxygenGeneratorConstruction_3.mwm" />
+			</BuildProgressModels>
+			<BlockPairName>OxygenGenerator</BlockPairName>
+			<EdgeType>Light</EdgeType>
+			<BuildTimeSeconds>20</BuildTimeSeconds>
+			<ResourceSourceGroup>Reactors</ResourceSourceGroup>
+			<ResourceSinkGroup>Factory</ResourceSinkGroup>
+			<IceConsumptionPerSecond>167</IceConsumptionPerSecond>
+			<InventoryMaxVolume>4</InventoryMaxVolume>
+			<InventorySize>
+				<X>2</X>
+				<Y>2</Y>
+				<Z>2</Z>
+			</InventorySize>
+			<StandbyPowerConsumption>0.001</StandbyPowerConsumption>
+			<OperationalPowerConsumption>0.33</OperationalPowerConsumption>
+			<ProducedGases>
+				<GasInfo>
+					<Id>
+						<TypeId>GasProperties</TypeId>
+						<SubtypeId>Oxygen</SubtypeId>
+					</Id>
+					<IceToGasRatio>3</IceToGasRatio>
+				</GasInfo>
+				<GasInfo>
+					<Id>
+						<TypeId>GasProperties</TypeId>
+						<SubtypeId>Hydrogen</SubtypeId>
+					</Id>
+					<IceToGasRatio>3</IceToGasRatio>
+				</GasInfo>
+				<GasInfo>
+					<Id>
+						<TypeId>GasProperties</TypeId>
+						<SubtypeId>Argon</SubtypeId>
+					</Id>
+					<IceToGasRatio>1</IceToGasRatio>
+				</GasInfo>
+			</ProducedGases>
+			<BlueprintClasses>
+				<Class>Ice</Class>
+				<Class>OxygenBottles</Class>
+				<Class>HydrogenBottles</Class>
+			</BlueprintClasses>
+			<DamageEffectId>213</DamageEffectId>
+			<DamagedSound>ParticleWeapExpl</DamagedSound>
+			<GenerateSound>BlockOxyGenProcess</GenerateSound>
+			<IdleSound>BlockOxyGenIdle</IdleSound>
+			<EmissiveColorPreset>Extended</EmissiveColorPreset>
+			<DestroyEffect>Explosion_Missile</DestroyEffect>
+			<DestroySound>WepSmallMissileExpl</DestroySound>
+
+			<!--<Effects>
+        <Effect Name="Damage" ParameterMin="0.5">
+          <ParticleEffects>
+            <ParticleEffect Origin="Damage_02" Name="SmokeWhite" Loop="true" Duration="3" SpawnTimeMin="2" SpawnTimeMax="5" />
+            <ParticleEffect Origin="Damage_04" Name="SmokeWhite" Loop="true" Duration="3" SpawnTimeMin="2" SpawnTimeMax="5" />
+          </ParticleEffects>
+        </Effect>
+        
+        
+        <Effect Name="Damage" ParameterMin="0" ParameterMax="0.5">
+          <ParticleEffects>
+            <ParticleEffect Origin="Damage_01" Name="SmokeBlack" Loop="true" Delay="2" />
+            <ParticleEffect Origin="Damage_02" Name="SmokeWhite" Loop="true" />
+            <ParticleEffect Origin="Damage_03" Name="SmokeBlack" Loop="true" Delay="4" />
+            <ParticleEffect Origin="Damage_04" Name="SmokeWhite" Loop="true" />
+          </ParticleEffects>
+        </Effect>
+      </Effects> -->
+		</Definition>
+	</CubeBlocks>
+</Definitions>

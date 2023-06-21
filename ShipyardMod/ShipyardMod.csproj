@@ -128,7 +128,10 @@
     <Compile Include="ProcessHandlers\ProcessShipyardAction.cs" />
     <Compile Include="ProcessHandlers\ProcessShipyardDetection.cs" />
     <Compile Include="ItemClasses\ShipyardItem.cs" />
+    <Compile Include="Utility\PerTickProcessor.cs" />
+    <Compile Include="Utility\ProcessManager.cs" />
     <Compile Include="Utility\Profiler.cs" />
+    <Compile Include="Utility\Tuple.cs" />
     <Compile Include="Utility\Utilities.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

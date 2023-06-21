@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<Blueprints>
+		<Blueprint>
+			<Id>
+				<TypeId>BlueprintDefinition</TypeId>
+				<SubtypeId>TargetingComputerComponent</SubtypeId>
+			</Id>
+			<DisplayName>TargetingComputer</DisplayName>
+			<Icon>Textures\GUI\Icons\component\computer_component.dds</Icon>
+			<Prerequisites>
+				<Item Amount="0.5" TypeId="Ingot" SubtypeId="Gold" />
+				<Item Amount="0.8" TypeId="Ingot" SubtypeId="Silicon" />
+				<Item Amount="0.2" TypeId="Ingot" SubtypeId="Platinum" />
+			</Prerequisites>
+			<Result Amount="1" TypeId="Component" SubtypeId="TargetingComputer" />
+			<BaseProductionTimeInSeconds>1</BaseProductionTimeInSeconds>
+		</Blueprint>
+	</Blueprints>
+</Definitions>

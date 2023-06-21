@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.Entities;
+using Sandbox.Game.GameSystems;
 using Sandbox.ModAPI;
 using ShipyardMod.ItemClasses;
 using ShipyardMod.Settings;
@@ -112,18 +113,20 @@ namespace ShipyardMod.ProcessHandlers
                 if (ShipyardsList.Any(x => x.EntityId == entity.EntityId))
                     continue;
 
-                var gridBlocks = new List<IMySlimBlock>();
-                grid.GetBlocks(gridBlocks);
+                var gridBlocks = new List<IMyTerminalBlock>();
+                //grid.GetBlocks(gridBlocks);
+                var gts = MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(grid);
+                gts.GetBlocks(gridBlocks);
 
-                foreach (IMySlimBlock slimBlock in gridBlocks.ToArray())
+                foreach (var term in gridBlocks.ToArray())
                 {
-                    var collector = slimBlock.FatBlock as IMyCollector;
+                    var collector = term as IMyCollector;
                     if (collector == null)
                         continue;
 
                     if (collector.BlockDefinition.SubtypeId.StartsWith("ShipyardCorner"))
                     {
-                        _corners.Add(slimBlock.FatBlock);
+                        _corners.Add(term);
                     }
                 }
 
@@ -159,7 +162,7 @@ namespace ShipyardMod.ProcessHandlers
                     continue;
 
                 //add an offset of 2.5m because the corner points are at the center of a 3^3 block, and the yard will be 2.5m short in all dimensions
-                MyOrientedBoundingBoxD testBox = MathUtility.CreateOrientedBoundingBox((IMyCubeGrid)entity, _corners.Select(x => x.GetPosition()).ToList(), 2.5);
+                MyOrientedBoundingBoxD testBox = MathUtility.CreateOrientedBoundingBox((IMyCubeGrid)entity, _corners.Select(x => grid.GridIntegerToWorld(grid.WorldToGridInteger(x.PositionComp.GetPosition()))).ToList(), 2.5);
 
                 Logging.Instance.WriteLine("Found yard");
                 var item = new ShipyardItem(
